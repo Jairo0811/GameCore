@@ -7,7 +7,7 @@ GO
 
 SET NOCOUNT ON;
 
-DECLARE @ExpectedTables int = 14;
+DECLARE @ExpectedTables int = 15;
 DECLARE @ActualTables int;
 
 SELECT @ActualTables = COUNT(*)
@@ -19,9 +19,6 @@ WHERE schema_id = SCHEMA_ID(N'dbo')
     N'GameGenres', N'Platforms', N'GamePlatforms', N'Countries',
     N'Distributions', N'Sales', N'SaleDetails'
   );
-
--- There are 15 core tables. Kept explicit to make schema drift visible.
-SET @ExpectedTables = 15;
 
 IF @ActualTables <> @ExpectedTables
     THROW 51001, 'GameCoreDB validation failed: one or more core tables are missing.', 1;
