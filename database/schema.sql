@@ -13,7 +13,8 @@ CREATE TABLE dbo.Companies (
     Phone           varchar(20) NULL,
     Email           varchar(150) NULL,
     CreatedAt       datetime2(0) NOT NULL CONSTRAINT DF_Companies_CreatedAt DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT UQ_Companies_Name UNIQUE (Name)
+    CONSTRAINT UQ_Companies_Name UNIQUE (Name),
+    CONSTRAINT CK_Companies_Name_NotBlank CHECK (LEN(LTRIM(RTRIM(Name))) > 0)
 );
 GO
 
@@ -24,13 +25,15 @@ CREATE TABLE dbo.Branches (
     AddressLine     nvarchar(250) NULL,
     IsActive        bit NOT NULL CONSTRAINT DF_Branches_IsActive DEFAULT (1),
     CONSTRAINT FK_Branches_Companies FOREIGN KEY (CompanyId) REFERENCES dbo.Companies(CompanyId),
-    CONSTRAINT UQ_Branches_Company_Name UNIQUE (CompanyId, Name)
+    CONSTRAINT UQ_Branches_Company_Name UNIQUE (CompanyId, Name),
+    CONSTRAINT CK_Branches_Name_NotBlank CHECK (LEN(LTRIM(RTRIM(Name))) > 0)
 );
 GO
 
 CREATE TABLE dbo.JobPositions (
     JobPositionId   int IDENTITY(1,1) NOT NULL CONSTRAINT PK_JobPositions PRIMARY KEY,
-    Name            nvarchar(100) NOT NULL CONSTRAINT UQ_JobPositions_Name UNIQUE
+    Name            nvarchar(100) NOT NULL CONSTRAINT UQ_JobPositions_Name UNIQUE,
+    CONSTRAINT CK_JobPositions_Name_NotBlank CHECK (LEN(LTRIM(RTRIM(Name))) > 0)
 );
 GO
 
@@ -47,7 +50,9 @@ CREATE TABLE dbo.Employees (
     CreatedAt       datetime2(0) NOT NULL CONSTRAINT DF_Employees_CreatedAt DEFAULT SYSUTCDATETIME(),
     CONSTRAINT FK_Employees_Branches FOREIGN KEY (BranchId) REFERENCES dbo.Branches(BranchId),
     CONSTRAINT FK_Employees_JobPositions FOREIGN KEY (JobPositionId) REFERENCES dbo.JobPositions(JobPositionId),
-    CONSTRAINT UQ_Employees_Email UNIQUE (Email)
+    CONSTRAINT UQ_Employees_Email UNIQUE (Email),
+    CONSTRAINT CK_Employees_FirstName_NotBlank CHECK (LEN(LTRIM(RTRIM(FirstName))) > 0),
+    CONSTRAINT CK_Employees_LastName_NotBlank CHECK (LEN(LTRIM(RTRIM(LastName))) > 0)
 );
 GO
 
@@ -58,7 +63,9 @@ CREATE TABLE dbo.Customers (
     Phone           varchar(20) NULL,
     Email           varchar(150) NULL,
     CreatedAt       datetime2(0) NOT NULL CONSTRAINT DF_Customers_CreatedAt DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT UQ_Customers_Email UNIQUE (Email)
+    CONSTRAINT UQ_Customers_Email UNIQUE (Email),
+    CONSTRAINT CK_Customers_FirstName_NotBlank CHECK (LEN(LTRIM(RTRIM(FirstName))) > 0),
+    CONSTRAINT CK_Customers_LastName_NotBlank CHECK (LEN(LTRIM(RTRIM(LastName))) > 0)
 );
 GO
 
@@ -66,7 +73,9 @@ CREATE TABLE dbo.AgeRatings (
     AgeRatingId     int IDENTITY(1,1) NOT NULL CONSTRAINT PK_AgeRatings PRIMARY KEY,
     Code            varchar(20) NOT NULL,
     Name            nvarchar(100) NOT NULL,
-    CONSTRAINT UQ_AgeRatings_Code UNIQUE (Code)
+    CONSTRAINT UQ_AgeRatings_Code UNIQUE (Code),
+    CONSTRAINT CK_AgeRatings_Code_NotBlank CHECK (LEN(LTRIM(RTRIM(Code))) > 0),
+    CONSTRAINT CK_AgeRatings_Name_NotBlank CHECK (LEN(LTRIM(RTRIM(Name))) > 0)
 );
 GO
 
@@ -76,17 +85,20 @@ CREATE TABLE dbo.Games (
     Title           nvarchar(180) NOT NULL,
     Story           nvarchar(max) NULL,
     ReleaseDate     date NULL,
-    UnitPrice       decimal(12,2) NOT NULL CONSTRAINT CK_Games_UnitPrice CHECK (UnitPrice >= 0),
+    UnitPrice       decimal(12,2) NOT NULL,
     IsActive        bit NOT NULL CONSTRAINT DF_Games_IsActive DEFAULT (1),
     CreatedAt       datetime2(0) NOT NULL CONSTRAINT DF_Games_CreatedAt DEFAULT SYSUTCDATETIME(),
     CONSTRAINT FK_Games_AgeRatings FOREIGN KEY (AgeRatingId) REFERENCES dbo.AgeRatings(AgeRatingId),
-    CONSTRAINT UQ_Games_Title_ReleaseDate UNIQUE (Title, ReleaseDate)
+    CONSTRAINT UQ_Games_Title_ReleaseDate UNIQUE (Title, ReleaseDate),
+    CONSTRAINT CK_Games_Title_NotBlank CHECK (LEN(LTRIM(RTRIM(Title))) > 0),
+    CONSTRAINT CK_Games_UnitPrice CHECK (UnitPrice >= 0)
 );
 GO
 
 CREATE TABLE dbo.Genres (
     GenreId         int IDENTITY(1,1) NOT NULL CONSTRAINT PK_Genres PRIMARY KEY,
-    Name            nvarchar(80) NOT NULL CONSTRAINT UQ_Genres_Name UNIQUE
+    Name            nvarchar(80) NOT NULL CONSTRAINT UQ_Genres_Name UNIQUE,
+    CONSTRAINT CK_Genres_Name_NotBlank CHECK (LEN(LTRIM(RTRIM(Name))) > 0)
 );
 GO
 
@@ -101,7 +113,8 @@ GO
 
 CREATE TABLE dbo.Platforms (
     PlatformId      int IDENTITY(1,1) NOT NULL CONSTRAINT PK_Platforms PRIMARY KEY,
-    Name            nvarchar(80) NOT NULL CONSTRAINT UQ_Platforms_Name UNIQUE
+    Name            nvarchar(80) NOT NULL CONSTRAINT UQ_Platforms_Name UNIQUE,
+    CONSTRAINT CK_Platforms_Name_NotBlank CHECK (LEN(LTRIM(RTRIM(Name))) > 0)
 );
 GO
 
@@ -119,7 +132,9 @@ CREATE TABLE dbo.Countries (
     Iso2            char(2) NOT NULL,
     Name            nvarchar(100) NOT NULL,
     CONSTRAINT UQ_Countries_Iso2 UNIQUE (Iso2),
-    CONSTRAINT UQ_Countries_Name UNIQUE (Name)
+    CONSTRAINT UQ_Countries_Name UNIQUE (Name),
+    CONSTRAINT CK_Countries_Iso2 CHECK (Iso2 = UPPER(Iso2) AND Iso2 NOT LIKE '%[^A-Z]%'),
+    CONSTRAINT CK_Countries_Name_NotBlank CHECK (LEN(LTRIM(RTRIM(Name))) > 0)
 );
 GO
 
@@ -128,10 +143,11 @@ CREATE TABLE dbo.Distributions (
     GameId          int NOT NULL,
     CountryId       int NOT NULL,
     DistributionDate date NOT NULL,
-    Units           int NOT NULL CONSTRAINT CK_Distributions_Units CHECK (Units >= 0),
+    Units           int NOT NULL,
     CONSTRAINT FK_Distributions_Games FOREIGN KEY (GameId) REFERENCES dbo.Games(GameId),
     CONSTRAINT FK_Distributions_Countries FOREIGN KEY (CountryId) REFERENCES dbo.Countries(CountryId),
-    CONSTRAINT UQ_Distributions_Game_Country_Date UNIQUE (GameId, CountryId, DistributionDate)
+    CONSTRAINT UQ_Distributions_Game_Country_Date UNIQUE (GameId, CountryId, DistributionDate),
+    CONSTRAINT CK_Distributions_Units CHECK (Units >= 0)
 );
 GO
 
@@ -161,9 +177,37 @@ CREATE TABLE dbo.SaleDetails (
 );
 GO
 
-CREATE INDEX IX_Employees_BranchId ON dbo.Employees(BranchId);
-CREATE INDEX IX_Games_AgeRatingId ON dbo.Games(AgeRatingId);
-CREATE INDEX IX_Sales_CustomerId_SaleDate ON dbo.Sales(CustomerId, SaleDate DESC);
-CREATE INDEX IX_SaleDetails_GameId ON dbo.SaleDetails(GameId);
-CREATE INDEX IX_Distributions_CountryId ON dbo.Distributions(CountryId);
+CREATE INDEX IX_Branches_CompanyId
+    ON dbo.Branches(CompanyId);
+
+CREATE INDEX IX_Employees_BranchId
+    ON dbo.Employees(BranchId);
+
+CREATE INDEX IX_Employees_JobPositionId
+    ON dbo.Employees(JobPositionId);
+
+CREATE INDEX IX_Games_AgeRatingId
+    ON dbo.Games(AgeRatingId);
+
+CREATE INDEX IX_GameGenres_GenreId
+    ON dbo.GameGenres(GenreId);
+
+CREATE INDEX IX_GamePlatforms_PlatformId
+    ON dbo.GamePlatforms(PlatformId);
+
+CREATE INDEX IX_Distributions_GameId_DistributionDate
+    ON dbo.Distributions(GameId, DistributionDate DESC);
+
+CREATE INDEX IX_Distributions_CountryId
+    ON dbo.Distributions(CountryId);
+
+CREATE INDEX IX_Sales_CustomerId_SaleDate
+    ON dbo.Sales(CustomerId, SaleDate DESC);
+
+CREATE INDEX IX_Sales_EmployeeId_SaleDate
+    ON dbo.Sales(EmployeeId, SaleDate DESC)
+    WHERE EmployeeId IS NOT NULL;
+
+CREATE INDEX IX_SaleDetails_GameId
+    ON dbo.SaleDetails(GameId);
 GO

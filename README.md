@@ -40,6 +40,8 @@ ER modeling + SQL Server
         ↓
 Database redesign
         ↓
+SQL Server Core
+        ↓
 .NET 10 REST API
         ↓
 React + TypeScript
@@ -56,7 +58,10 @@ GameCore/
 │   └── frontend/
 ├── database/
 │   ├── schema.sql
-│   └── seed.sql
+│   ├── seed.sql
+│   ├── setup.sql
+│   ├── reset.sql
+│   └── validate.sql
 ├── docs/
 │   ├── original/
 │   ├── database/
@@ -69,7 +74,7 @@ GameCore/
 
 0. ✅ Legacy Preservation
 1. ✅ Database Redesign
-2. SQL Server Core
+2. ✅ SQL Server Core
 3. Advanced SQL
 4. .NET Foundation
 5. REST API
@@ -101,6 +106,6 @@ Any personal data contained in the historical academic material must be anonymiz
 
 ## Status
 
-**Phase 1 — Database Redesign: complete.**
+**Phase 2 — SQL Server Core: complete.**
 
-Next: **Phase 2 — SQL Server Core.**
+Next: **Phase 3 — Advanced SQL.**
