@@ -42,6 +42,8 @@ Database redesign
         ↓
 SQL Server Core
         ↓
+Advanced SQL
+        ↓
 .NET 10 REST API
         ↓
 React + TypeScript
@@ -57,6 +59,7 @@ GameCore/
 │   ├── backend/
 │   └── frontend/
 ├── database/
+│   ├── advanced/
 │   ├── schema.sql
 │   ├── seed.sql
 │   ├── setup.sql
@@ -75,7 +78,7 @@ GameCore/
 0. ✅ Legacy Preservation
 1. ✅ Database Redesign
 2. ✅ SQL Server Core
-3. Advanced SQL
+3. ✅ Advanced SQL
 4. .NET Foundation
 5. REST API
 6. React Foundation
@@ -106,6 +109,6 @@ Any personal data contained in the historical academic material must be anonymiz
 
 ## Status
 
-**Phase 2 — SQL Server Core: complete.**
+**Phase 3 — Advanced SQL: complete.**
 
-Next: **Phase 3 — Advanced SQL.**
+Next: **Phase 4 — .NET Foundation.**
