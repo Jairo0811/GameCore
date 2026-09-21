@@ -79,7 +79,7 @@ GameCore/
 1. ✅ Database Redesign
 2. ✅ SQL Server Core
 3. ✅ Advanced SQL
-4. .NET Foundation
+4. ✅ .NET Foundation
 5. REST API
 6. React Foundation
 7. Game Management
@@ -109,6 +109,8 @@ Any personal data contained in the historical academic material must be anonymiz
 
 ## Status
 
-**Phase 3 — Advanced SQL: complete.**
+**Phase 4 — .NET Foundation: complete.**
 
-Next: **Phase 4 — .NET Foundation.**
+The repository now contains a .NET 10 Clean Architecture foundation with Domain, Application, Infrastructure, and WebAPI projects, plus Entity Framework Core mapping for GameCoreDB.
+
+Next: **Phase 5 — REST API.**
