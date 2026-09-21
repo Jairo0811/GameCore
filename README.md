@@ -55,6 +55,8 @@ GameCore/
 │   ├── backend/
 │   └── frontend/
 ├── database/
+│   ├── schema.sql
+│   └── seed.sql
 ├── docs/
 │   ├── original/
 │   ├── database/
@@ -65,8 +67,8 @@ GameCore/
 
 ## Restoration phases
 
-0. Legacy Preservation
-1. Database Redesign
+0. ✅ Legacy Preservation
+1. ✅ Database Redesign
 2. SQL Server Core
 3. Advanced SQL
 4. .NET Foundation
@@ -89,10 +91,16 @@ GameCore/
 
 > The restored version does not claim that React or .NET were part of the original submission. They are technologies incorporated later as part of the project's modernization.
 
+## Legacy preservation
+
+The original SQL is preserved in `docs/original/TAREA-FINAL.sql`. The restored schema is intentionally separate so the project history remains visible instead of overwriting the original work.
+
 ## Privacy
 
-Any personal data contained in the historical academic material must be anonymized before being reused as public seed data.
+Any personal data contained in the historical academic material must be anonymized before being reused as public seed data. The modern `database/seed.sql` retains the legacy game catalog while replacing sensitive personal identifiers with safe demo values.
 
 ## Status
 
-**Phase 0 — Legacy Preservation: in progress.**
+**Phase 1 — Database Redesign: complete.**
+
+Next: **Phase 2 — SQL Server Core.**
