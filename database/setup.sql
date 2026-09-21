@@ -16,7 +16,11 @@ GO
 
 :r .\database\schema.sql
 :r .\database\seed.sql
+:r .\database\advanced\views.sql
+:r .\database\advanced\functions.sql
+:r .\database\advanced\procedures.sql
 :r .\database\validate.sql
+:r .\database\advanced\validate.sql
 
 PRINT '=== GameCoreDB setup completed successfully ===';
 GO
