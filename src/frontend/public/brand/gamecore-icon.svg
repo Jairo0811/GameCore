@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+<title id="title">GameCore icon</title>
+<defs>
+  <linearGradient id="n" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#20e6ff"/><stop offset=".5" stop-color="#1685ff"/><stop offset="1" stop-color="#8d4dff"/>
+  </linearGradient>
+  <filter id="g" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g filter="url(#g)" stroke="url(#n)" stroke-width="12" stroke-linejoin="round">
+  <path d="M121 145c-49 7-82 36-98 88L8 310c-13 47 39 75 68 40l61-69h238l61 69c29 35 81 7 68-40l-15-77c-16-52-49-81-98-88l-58 30H179z" fill="#071329"/>
+  <path d="M90 245h58M119 216v58" stroke-linecap="round"/>
+  <circle cx="387" cy="224" r="13" fill="#22dfff"/><circle cx="423" cy="252" r="13" fill="#784fff"/>
+  <circle cx="351" cy="252" r="13" fill="#20cfff"/><circle cx="387" cy="280" r="13" fill="#196cff"/>
+  <ellipse cx="256" cy="114" rx="72" ry="22" fill="url(#n)"/>
+  <path d="M184 114v52c0 13 32 23 72 23s72-10 72-23v-52c0 13-32 23-72 23s-72-10-72-23z" fill="url(#n)"/>
+  <path d="M184 173v52c0 13 32 23 72 23s72-10 72-23v-52c0 13-32 23-72 23s-72-10-72-23z" fill="url(#n)"/>
+  <path d="M222 248v53M256 248v74M290 248v53" stroke-linecap="round"/>
+  <circle cx="222" cy="313" r="12" fill="#071329"/><circle cx="256" cy="334" r="12" fill="#071329"/><circle cx="290" cy="313" r="12" fill="#071329"/>
+</g>
+</svg>
