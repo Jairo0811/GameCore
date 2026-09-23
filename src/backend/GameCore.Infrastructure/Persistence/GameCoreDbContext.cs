@@ -21,6 +21,7 @@ public sealed class GameCoreDbContext(DbContextOptions<GameCoreDbContext> option
     public DbSet<Distribution> Distributions => Set<Distribution>();
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SaleDetail> SaleDetails => Set<SaleDetail>();
+    public DbSet<AppUser> AppUsers => Set<AppUser>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -251,6 +252,17 @@ public sealed class GameCoreDbContext(DbContextOptions<GameCoreDbContext> option
                 .WithMany(x => x.SaleDetails)
                 .HasForeignKey(x => x.GameId)
                 .OnDelete(DeleteBehavior.NoAction);
+        });
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.ToTable("AppUsers");
+            entity.HasKey(x => x.UserId);
+            entity.Property(x => x.Email).HasMaxLength(150).IsUnicode(false).IsRequired();
+            entity.Property(x => x.PasswordHash).HasMaxLength(250).IsUnicode(false).IsRequired();
+            entity.Property(x => x.Role).HasMaxLength(40).IsUnicode(false).IsRequired();
+            entity.Property(x => x.IsActive).HasDefaultValue(true);
+            entity.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()").ValueGeneratedOnAdd();
+            entity.HasIndex(x => x.Email).IsUnique();
         });
     }
 }

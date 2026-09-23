@@ -16,6 +16,7 @@ GO
 
 :r .\database\schema.sql
 :r .\database\seed.sql
+:r .\database\security.sql
 :r .\database\advanced\views.sql
 :r .\database\advanced\functions.sql
 :r .\database\advanced\procedures.sql

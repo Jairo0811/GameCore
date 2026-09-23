@@ -1,0 +1,29 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "GameCore_Local_2026!"
+    ports: ["1433:1433"]
+    volumes: [gamecore_sql:/var/opt/mssql]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__GameCoreDb: "Server=sqlserver;Database=GameCoreDB;User Id=sa;Password=GameCore_Local_2026!;TrustServerCertificate=True"
+      Jwt__Key: "CHANGE-ME-LOCAL-ONLY-GameCore-Docker-2026-Development-Key-64Chars"
+    ports: ["8080:8080"]
+    depends_on: [sqlserver]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports: ["5173:80"]
+    depends_on: [api]
+
+volumes:
+  gamecore_sql:
