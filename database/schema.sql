@@ -7,6 +7,17 @@ GO
 USE GameCoreDB;
 GO
 
+-- Required SET options for filtered indexes and other indexed expressions.
+-- Declared explicitly so schema.sql behaves consistently under sqlcmd/SSMS.
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
+
 CREATE TABLE dbo.Companies (
     CompanyId       int IDENTITY(1,1) NOT NULL CONSTRAINT PK_Companies PRIMARY KEY,
     Name            nvarchar(120) NOT NULL,
