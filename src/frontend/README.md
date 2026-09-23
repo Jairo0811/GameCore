@@ -16,7 +16,7 @@ npm install
 npm run dev
 ```
 
-The default API URL is `https://localhost:5001`. Override it with `VITE_API_URL` when necessary.
+The default API URL is `http://localhost:5152`. Override it with `VITE_API_URL` when necessary.
 
 ## Demo login
 
