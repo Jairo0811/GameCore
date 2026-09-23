@@ -1,12 +1,21 @@
 <div align="center">
 
+<img src="src/frontend/public/brand/gamecore-logo.svg" alt="GameCore" width="760" />
+
+<br/>
+
 # GameCore
 
-<img src="https://img.shields.io/badge/ITLA-SOF--006-0057B8?style=for-the-badge" alt="ITLA SOF-006" />
-<img src="https://img.shields.io/badge/Per%C3%ADodo-2016--C2-0F766E?style=for-the-badge" alt="Período 2016-C2" />
-<img src="https://img.shields.io/badge/Estado-Implementaci%C3%B3n%20completa-F59E0B?style=for-the-badge" alt="Implementación completa; validación final pendiente" />
+**Video Game Management System**
 
-<br/><br/>
+Sistema full stack para administrar el ecosistema operativo de una empresa de videojuegos: **catálogo, clientes, ventas, empleados, distribución y analítica**, construido como restauración moderna de un proyecto académico de bases de datos.
+
+<p>
+  <img src="https://img.shields.io/badge/.NET-10-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" alt=".NET 10" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=000" alt="React 19" />
+  <img src="https://img.shields.io/badge/TypeScript-7-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript 7" />
+  <img src="https://img.shields.io/badge/SQL_Server-GameCoreDB-CC2927?style=for-the-badge&logo=microsoftsqlserver&logoColor=white" alt="SQL Server" />
+</p>
 
 <a href="https://github.com/Jairo0811/GameCore/actions/workflows/ci.yml">
   <img src="https://github.com/Jairo0811/GameCore/actions/workflows/ci.yml/badge.svg" alt="CI" />
@@ -14,19 +23,276 @@
 
 <br/><br/>
 
-**Gestión de videojuegos, clientes, ventas, empleados y distribución sobre una reconstrucción moderna de un proyecto de bases de datos.**
+**PLAY · STORE · MANAGE · GROW**
 
 </div>
 
-## 📌 Descripción
+---
 
-**GameCore** es la reconstrucción 2026 de un proyecto final desarrollado originalmente para **Introducción a las Bases de Datos (SOF-006)** en el Instituto Tecnológico de Las Américas (ITLA).
+## 🎮 ¿Qué es GameCore?
 
-El trabajo original se centró en modelado relacional y SQL Server. La reconstrucción conserva el artefacto SQL histórico y extiende el mismo dominio hacia una aplicación full stack con API, autenticación, módulos operativos, consultas avanzadas y frontend web.
+**GameCore** es una aplicación de gestión orientada a una empresa que desarrolla, administra o distribuye videojuegos.
+
+Su objetivo es centralizar información del negocio y convertirla en operaciones reales dentro de una misma plataforma:
+
+- 🎮 administración del catálogo de videojuegos;
+- 🧩 géneros, plataformas y clasificaciones;
+- 👥 gestión de clientes;
+- 🧾 registro de ventas y detalle de productos;
+- 👨‍💼 administración de empleados, cargos y sucursales;
+- 🌎 distribución de videojuegos por país;
+- 📊 dashboard con indicadores y rendimiento comercial;
+- 🗄️ consultas y reporting respaldados directamente por SQL Server.
+
+GameCore **no pretende ser un POS de tienda tradicional**. Aunque registra ventas, su foco está en administrar el ecosistema de la empresa y sus datos, no en funciones de caja como turnos de cajero, arqueos o inventario físico detallado.
 
 ---
 
-## 🎓 Información académica
+## ✨ Funcionalidades principales
+
+| Módulo | Función |
+|---|---|
+| 📊 **Dashboard** | KPIs de videojuegos, clientes, ventas, empleados, ingresos y títulos más vendidos |
+| 🎮 **Videojuegos** | Alta, edición, desactivación y consulta del catálogo |
+| 🧩 **Catálogos** | Géneros, plataformas y clasificaciones por edad |
+| 👥 **Clientes** | Registro y actualización de clientes |
+| 🧾 **Ventas** | Ventas transaccionales con múltiples videojuegos por operación |
+| 👨‍💼 **Empleados** | Personal, sucursales, cargos y estado |
+| 🌎 **Distribución** | Distribución de títulos por países y cantidades |
+| 📈 **Reportes** | Rendimiento comercial y consultas agregadas |
+| 🔐 **Autenticación** | Acceso protegido mediante JWT |
+| 🧪 **SQL avanzado** | Views, stored procedures, funciones, transacciones y reporting |
+
+---
+
+## 🏗️ Arquitectura
+
+```text
+┌─────────────────────────────┐
+│ React + TypeScript + Vite   │
+│        Frontend Web         │
+└──────────────┬──────────────┘
+               │ HTTP / JSON
+               ▼
+┌─────────────────────────────┐
+│ ASP.NET Core Web API        │
+│ JWT · Endpoints REST        │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ Domain                      │
+│ Application                 │
+│ Infrastructure              │
+└──────────────┬──────────────┘
+               │ Entity Framework Core
+               ▼
+┌─────────────────────────────┐
+│ GameCoreDB · SQL Server     │
+│ Tables · Views · SP · UDF   │
+└─────────────────────────────┘
+```
+
+La restauración mantiene un enfoque **database-first**: los scripts de `database/` siguen siendo la fuente principal del esquema y Entity Framework Core mapea la base existente.
+
+---
+
+## 🧱 Stack tecnológico
+
+### Frontend
+
+- **React 19**
+- **TypeScript**
+- **Vite**
+- interfaz responsive
+- cliente HTTP autenticado mediante Bearer Token
+- identidad visual GameCore integrada
+
+### Backend
+
+- **.NET 10**
+- **ASP.NET Core Web API**
+- **C#**
+- **Entity Framework Core**
+- **JWT Bearer Authentication**
+- separación por capas:
+  - `GameCore.Domain`
+  - `GameCore.Application`
+  - `GameCore.Infrastructure`
+  - `GameCore.WebAPI`
+
+### Base de datos
+
+- **Microsoft SQL Server**
+- claves primarias y foráneas
+- restricciones `CHECK` y `UNIQUE`
+- índices
+- views
+- stored procedures
+- funciones escalares
+- transacciones
+- `OPENJSON`
+- reporting SQL
+
+### DevOps / calidad
+
+- **Docker**
+- **Docker Compose**
+- **GitHub Actions**
+- chequeo de vulnerabilidades NuGet
+- `npm audit`
+- smoke test en PowerShell
+
+---
+
+## 🗄️ Modelo de datos
+
+El modelo moderno amplía el diseño académico original y separa correctamente las responsabilidades principales:
+
+```text
+Companies
+ └── Branches
+      └── Employees
+           └── JobPositions
+
+Games
+ ├── AgeRatings
+ ├── GameGenres ── Genres
+ ├── GamePlatforms ── Platforms
+ └── Distributions ── Countries
+
+Customers
+ └── Sales
+      └── SaleDetails
+           └── Games
+
+AppUsers
+ └── JWT Authentication
+```
+
+Una de las mejoras fundamentales respecto al modelo original fue reemplazar:
+
+```text
+Cliente → Videojuego
+```
+
+por:
+
+```text
+Cliente → Venta → Detalle de Venta → Videojuego
+```
+
+Esto permite que un cliente tenga múltiples compras y que una venta contenga múltiples videojuegos.
+
+---
+
+## 🔌 API
+
+La API expone recursos protegidos bajo `/api`.
+
+### Autenticación
+
+```text
+POST /api/auth/login
+```
+
+### Recursos principales
+
+```text
+GET    /api/games
+POST   /api/games
+PUT    /api/games/{id}
+DELETE /api/games/{id}
+
+GET    /api/customers
+POST   /api/customers
+PUT    /api/customers/{id}
+
+GET    /api/sales
+POST   /api/sales
+
+GET    /api/employees
+POST   /api/employees
+
+GET    /api/distributions
+POST   /api/distributions
+
+GET    /api/catalogs
+GET    /api/dashboard
+```
+
+La creación de ventas se ejecuta de forma transaccional para evitar operaciones parciales.
+
+---
+
+## 🗂️ Estructura del repositorio
+
+```text
+GameCore/
+├── database/
+│   ├── advanced/
+│   │   ├── functions.sql
+│   │   ├── procedures.sql
+│   │   ├── reports.sql
+│   │   ├── validate.sql
+│   │   └── views.sql
+│   ├── schema.sql
+│   ├── seed.sql
+│   ├── security.sql
+│   ├── setup.sql
+│   ├── reset.sql
+│   └── validate.sql
+│
+├── src/
+│   ├── backend/
+│   │   ├── GameCore.Domain/
+│   │   ├── GameCore.Application/
+│   │   ├── GameCore.Infrastructure/
+│   │   ├── GameCore.WebAPI/
+│   │   └── GameCore.sln
+│   │
+│   └── frontend/
+│       ├── public/brand/
+│       └── src/
+│
+├── docs/
+│   ├── original/
+│   ├── database/
+│   └── RELEASE.md
+│
+├── scripts/
+│   └── smoke-test.ps1
+│
+├── Dockerfile.backend
+├── Dockerfile.frontend
+├── docker-compose.yml
+└── README.md
+```
+
+---
+
+## 🎨 Identidad visual
+
+La identidad de GameCore combina los dos conceptos centrales del proyecto:
+
+- 🎮 **mando de videojuegos** → industria y catálogo;
+- 🗄️ **base de datos** → origen académico y núcleo de información.
+
+Los assets utilizados por la aplicación están incluidos en:
+
+```text
+src/frontend/public/brand/
+├── gamecore-logo.svg
+└── gamecore-icon.svg
+```
+
+El isotipo también funciona como favicon de la aplicación.
+
+---
+
+## 🎓 Origen académico
+
+GameCore nació como proyecto final de **Introducción a las Bases de Datos (SOF-006)** en el **Instituto Tecnológico de Las Américas (ITLA)**.
 
 | Información | Detalle |
 |---|---|
@@ -35,99 +301,53 @@ El trabajo original se centró en modelado relacional y SQL Server. La reconstru
 | 👨‍🏫 Profesor | **Freidy Ramón Núñez Pérez** |
 | 📅 Período académico | **2016-C2** |
 | 👨🏻‍💻 Estudiante | **Francis Jairo Matías Rosario — 2015-2984** |
-| 📁 Tipo de entrega | **Proyecto Final** |
-| 🛠️ Reconstrucción | **2026** |
+| 📁 Entrega original | **Proyecto Final** |
+| 🛠️ Restauración | **2026** |
 
-El SQL original se conserva en `docs/original/TAREA-FINAL.sql` y no se sobrescribe con datos modernos de demostración.
+La versión original se concentraba en:
 
----
+- creación de tablas;
+- claves primarias y foráneas;
+- `INSERT`;
+- filtros;
+- `JOIN`;
+- consultas básicas en SQL Server.
 
-## 🧭 Continuidad académica
-
-### 👨‍🏫 Continuidad por profesor
-
-GameCore comparte profesor y período con [**PySL**](https://github.com/Jairo0811/PySL). Ambos fueron desarrollados durante **2016-C2** bajo la docencia de **Freidy Ramón Núñez Pérez**, pero corresponden a asignaturas y objetivos distintos.
-
-| Orden | Asignatura | Proyecto | Período |
-|---:|---|---|---|
-| 1 | Fundamentos de Programación (SOF-001) | [**PySL**](https://github.com/Jairo0811/PySL) | 2016-C2 |
-| 2 | Introducción a las Bases de Datos (SOF-006) | **GameCore** | 2016-C2 |
-
-La relación es **académica y docente**. No existe dependencia técnica entre ambos repositorios.
-
----
-
-## 🧱 Stack tecnológico
-
-### 🎨 Frontend
-
-<p>
-  <img src="https://skillicons.dev/icons?i=react,ts,vite" alt="React, TypeScript y Vite" />
-</p>
-
-- React 19.3
-- TypeScript 7
-- Vite 8
-
-### ⚙️ Backend
-
-<p>
-  <img src="https://skillicons.dev/icons?i=dotnet,cs" alt=".NET y C#" />
-  <img src="https://img.shields.io/badge/ASP.NET%20Core-Web%20API-512BD4?style=flat-square&logo=dotnet&logoColor=white" alt="ASP.NET Core Web API" />
-</p>
-
-- .NET 10
-- ASP.NET Core Web API
-- Entity Framework Core
-- JWT Authentication
-- Domain / Application / Infrastructure separation
-
-### 🗄️ Datos
-
-<p>
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/microsoftsqlserver/microsoftsqlserver-plain.svg" width="48" height="48" alt="Microsoft SQL Server" />
-</p>
-
-- Microsoft SQL Server
-- modelo relacional restaurado y ampliado
-- consultas y capacidades SQL avanzadas
-
-### 🧪 Calidad y DevOps
-
-<p>
-  <img src="https://skillicons.dev/icons?i=docker,git,github,githubactions" alt="Docker, Git, GitHub y GitHub Actions" />
-</p>
-
-- Docker
-- Git / GitHub
-- GitHub Actions
-- build y validación automatizada
-
----
-
-## 🏗️ Arquitectura
+El archivo histórico se conserva en:
 
 ```text
-React + TypeScript
-       ↓
-ASP.NET Core Web API
-       ↓
-Domain / Application / Infrastructure
-       ↓
-Entity Framework Core
-       ↓
-GameCoreDB (SQL Server)
+docs/original/TAREA-FINAL.sql
 ```
 
-## 🧩 Módulos
-
-Dashboard · Videojuegos · Clientes · Ventas · Empleados · Distribución · Catálogos · Advanced SQL
+Ese código **no fue reescrito para ocultar sus limitaciones**. Se conserva como evidencia del proyecto inicial y la versión moderna vive de forma separada para mostrar claramente la evolución técnica.
 
 ---
 
-## 🗺️ Fases de restauración
+## 🔄 Evolución del proyecto
 
-| Fase | Alcance | Estado |
+```text
+Proyecto académico SOF-006
+          ↓
+Modelo relacional + SQL Server
+          ↓
+Rediseño de base de datos
+          ↓
+SQL Server Core
+          ↓
+Advanced SQL
+          ↓
+.NET 10 + EF Core
+          ↓
+REST API + JWT
+          ↓
+React + TypeScript
+          ↓
+GameCore
+```
+
+### Fases de restauración
+
+| # | Fase | Estado |
 |---:|---|:---:|
 | 0 | Legacy Preservation | ✅ |
 | 1 | Database Redesign | ✅ |
@@ -148,13 +368,25 @@ Dashboard · Videojuegos · Clientes · Ventas · Empleados · Distribución · 
 
 ## 🚀 Ejecución local
 
-### Base de datos
+### 1. Base de datos
+
+Desde la raíz del repositorio:
 
 ```powershell
 sqlcmd -S localhost -E -i database/setup.sql
 ```
 
-### Backend
+El script instala:
+
+- esquema;
+- seed de demostración;
+- seguridad;
+- views;
+- funciones;
+- stored procedures;
+- validaciones.
+
+### 2. Backend
 
 ```powershell
 dotnet restore src/backend/GameCore.sln
@@ -162,7 +394,13 @@ dotnet build src/backend/GameCore.sln -c Release
 dotnet run --project src/backend/GameCore.WebAPI/GameCore.WebAPI.csproj
 ```
 
-### Frontend
+API local predeterminada:
+
+```text
+http://localhost:5152
+```
+
+### 3. Frontend
 
 ```powershell
 cd src/frontend
@@ -170,25 +408,93 @@ npm install
 npm run dev
 ```
 
-### 🔑 Acceso de demostración
+Frontend local:
 
-- Email: `admin@gamecore.local`
-- Password: `GameCore123!`
-
-Estas credenciales y la clave JWT son valores locales de demostración y deben reemplazarse antes de cualquier despliegue real.
-
----
-
-## 📚 Preservación académica
-
-El repositorio conserva el material histórico bajo `docs/original/`. La reconstrucción no reutiliza identificadores personales del SQL original como seed público de la aplicación moderna.
+```text
+http://localhost:5173
+```
 
 ---
 
-## 📊 Estado actual
+## 🔑 Cuenta de demostración
 
-La implementación funcional está completada. La **validación runtime final y la etiqueta real `v1.0.0` permanecen pendientes** hasta completar el pase local documentado en `docs/RELEASE.md`.
+```text
+Email:    admin@gamecore.local
+Password: GameCore123!
+```
 
-<p align="center">
-  <strong>GameCore · Del modelo relacional a una aplicación full stack.</strong>
-</p>
+> Las credenciales demo y la clave JWT incluida en configuración son exclusivamente para desarrollo local. Deben cambiarse antes de cualquier despliegue real.
+
+---
+
+## 🐳 Docker
+
+El repositorio incluye configuración para backend, frontend y SQL Server:
+
+```powershell
+docker compose up --build
+```
+
+---
+
+## 🧪 Validación
+
+Antes de etiquetar la versión final se deben ejecutar:
+
+```powershell
+dotnet build src/backend/GameCore.sln -c Release
+dotnet list src/backend/GameCore.sln package --vulnerable --include-transitive
+```
+
+y en el frontend:
+
+```powershell
+cd src/frontend
+npm install
+npm run build
+npm audit --audit-level=high
+```
+
+También se incluye:
+
+```text
+scripts/smoke-test.ps1
+```
+
+La lista completa está documentada en `docs/RELEASE.md`.
+
+---
+
+## 🔒 Privacidad y preservación
+
+Los datos personales presentes en el artefacto académico original se conservan únicamente como parte del contexto histórico del proyecto.
+
+La aplicación moderna utiliza **datos de demostración anonimizados** y no reutiliza identificadores personales reales como seed operativo.
+
+---
+
+## 📌 Estado
+
+**Implementación funcional completada.**
+
+La etiqueta definitiva `v1.0.0` se reserva hasta terminar la validación runtime local completa de:
+
+- SQL Server;
+- backend .NET;
+- frontend React;
+- autenticación;
+- módulos funcionales;
+- smoke test;
+- auditorías de dependencias.
+
+---
+
+<div align="center">
+
+### GameCore
+
+**Del modelo relacional a una aplicación full stack.**
+
+PLAY · STORE · MANAGE · GROW
+
+</div>
