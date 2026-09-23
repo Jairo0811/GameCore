@@ -25,8 +25,12 @@ export default function App(){
 
   return <div className="app-shell">
     <aside>
-      <div className="brand"><span>GC</span><div><strong>GameCore</strong><small>Management System</small></div></div>
+      <div className="brand">
+        <img src="/brand/gamecore-icon.svg" alt="" className="brand-icon"/>
+        <div><strong>GameCore</strong><small>Management System</small></div>
+      </div>
       <nav>{sections.map(([k,l])=><button key={k} className={section===k?'active':''} onClick={()=>setSection(k)}>{l}</button>)}</nav>
+      <div className="brand-signature">PLAY · STORE · MANAGE · GROW</div>
       <button className="logout" onClick={()=>{localStorage.removeItem('gamecore_token');setToken('')}}>Cerrar sesión</button>
     </aside>
     <main>
@@ -39,7 +43,21 @@ export default function App(){
 function Login({onToken}:{onToken:(token:string)=>void}){
   const [email,setEmail]=useState('admin@gamecore.local'),[password,setPassword]=useState('GameCore123!'),[error,setError]=useState('')
   async function submit(e:FormEvent){e.preventDefault();try{onToken((await login(email,password)).token)}catch(err){setError(err instanceof Error?err.message:'Error')}}
-  return <div className="login-page"><form className="login-card" onSubmit={submit}><div className="logo-mark">GC</div><h1>GameCore</h1><p>Video Game Management System</p><label>Correo<input value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Contraseña<input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<div className="error">{error}</div>}<button type="submit">Entrar</button><small>Cuenta demo local de la restauración académica.</small></form></div>
+  return <div className="login-page">
+    <div className="login-brand-panel">
+      <img src="/brand/gamecore-logo.svg" className="login-logo" alt="GameCore"/>
+      <p>PLAY · STORE · MANAGE · GROW</p>
+    </div>
+    <form className="login-card" onSubmit={submit}>
+      <img src="/brand/gamecore-icon.svg" className="login-icon" alt=""/>
+      <h1>Bienvenido</h1><p>Accede a GameCore para continuar</p>
+      <label>Correo<input value={email} onChange={e=>setEmail(e.target.value)}/></label>
+      <label>Contraseña<input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label>
+      {error&&<div className="error">{error}</div>}
+      <button type="submit">Entrar a GameCore</button>
+      <small>Cuenta demo local de la restauración académica.</small>
+    </form>
+  </div>
 }
 function View({section,data}:{section:Section,data:unknown}){
   if(section==='dashboard'){
