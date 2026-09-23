@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
+<title id="title">GameCore</title>
+<desc id="desc">GameCore video game management system logo</desc>
+<defs>
+  <linearGradient id="neon" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#20e6ff"/>
+    <stop offset=".48" stop-color="#1685ff"/>
+    <stop offset="1" stop-color="#8d4dff"/>
+  </linearGradient>
+  <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#ffffff"/>
+    <stop offset=".48" stop-color="#c9d4eb"/>
+    <stop offset="1" stop-color="#6e7f9f"/>
+  </linearGradient>
+  <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+    <feGaussianBlur stdDeviation="7" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+<g filter="url(#glow)" stroke="url(#neon)" stroke-width="12" stroke-linejoin="round">
+  <path d="M345 87c-68 8-113 48-134 117l-32 105c-18 61 51 95 91 51l75-77h510l75 77c40 44 109 10 91-51l-32-105c-21-69-66-109-134-117l-87 37H432z" fill="#071329" opacity=".96"/>
+  <path d="M296 221h74M333 184v74" stroke-linecap="round"/>
+  <circle cx="889" cy="194" r="15" fill="#22dfff"/><circle cx="931" cy="226" r="15" fill="#784fff"/>
+  <circle cx="847" cy="226" r="15" fill="#20cfff"/><circle cx="889" cy="258" r="15" fill="#196cff"/>
+  <g fill="#0a1a38">
+    <ellipse cx="600" cy="72" rx="91" ry="26" fill="url(#neon)"/>
+    <path d="M509 72v60c0 15 41 28 91 28s91-13 91-28V72c0 15-41 28-91 28s-91-13-91-28z" fill="url(#neon)"/>
+    <path d="M509 143v60c0 15 41 28 91 28s91-13 91-28v-60c0 15-41 28-91 28s-91-13-91-28z" fill="url(#neon)"/>
+  </g>
+  <path d="M558 230v63M600 230v88M642 230v63" stroke-linecap="round"/>
+  <circle cx="558" cy="305" r="13" fill="#08152f"/><circle cx="600" cy="330" r="13" fill="#08152f"/><circle cx="642" cy="305" r="13" fill="#08152f"/>
+</g>
+<text x="600" y="380" text-anchor="middle" font-family="Arial Black,Segoe UI,sans-serif" font-size="118" font-weight="900" letter-spacing="-6">
+  <tspan fill="url(#metal)">Game</tspan><tspan fill="url(#neon)">Core</tspan>
+</text>
+<text x="600" y="420" text-anchor="middle" font-family="Segoe UI,Arial,sans-serif" font-size="24" font-weight="600" letter-spacing="9" fill="#a7b9dc">VIDEO GAME MANAGEMENT SYSTEM</text>
+</svg>
