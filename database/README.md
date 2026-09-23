@@ -41,7 +41,18 @@ sqlcmd -S localhost -E -i database/reset.sql
 sqlcmd -S localhost -E -i database/setup.sql
 ```
 
+For SQL Server Express:
+
+```powershell
+sqlcmd -S .\SQLEXPRESS -E -i database/reset.sql
+sqlcmd -S .\SQLEXPRESS -E -i database/setup.sql
+```
+
 > `reset.sql` deletes the entire GameCoreDB database. It is intended only for local development.
+
+### SQLCMD compatibility
+
+`schema.sql` explicitly enables the SQL Server session options required by filtered indexes, including `QUOTED_IDENTIFIER`, `ANSI_NULLS`, `ANSI_WARNINGS`, `ARITHABORT`, and related settings. This prevents environment-dependent failures when running the bootstrap from `sqlcmd` or SSMS.
 
 ## Advanced SQL objects
 
