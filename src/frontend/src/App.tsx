@@ -58,7 +58,7 @@ export default function App(){
   return <div className="app-shell">
     <aside>
       <div className="brand">
-        <img src="/brand/gamecore-logo.svg" alt="GameCore" className="brand-logo"/>
+        <img src="/brand/gamecore-logo.png" alt="GameCore" className="brand-logo"/>
       </div>
       <nav>{sections.map(([k,l,icon])=>
         <button key={k} className={section===k?'active':''} onClick={()=>setSection(k)}>
