@@ -59,7 +59,7 @@ GameCore **no pretende ser un POS de tienda tradicional**. Aunque registra venta
 | 🧾 **Ventas** | Ventas transaccionales con múltiples videojuegos por operación |
 | 👨‍💼 **Empleados** | Personal, sucursales, cargos y estado |
 | 🌎 **Distribución** | Distribución de títulos por países y cantidades |
-| 📈 **Reportes** | Rendimiento comercial y consultas agregadas |
+| 📈 **Reportes** | Ventas mensuales, rendimiento por juego, valor por cliente y distribución geográfica |
 | 🔐 **Autenticación** | Acceso protegido mediante JWT |
 | 🧪 **SQL avanzado** | Views, stored procedures, funciones, transacciones y reporting |
 
@@ -219,6 +219,7 @@ POST   /api/distributions
 
 GET    /api/catalogs
 GET    /api/dashboard
+GET    /api/reports
 ```
 
 La creación de ventas se ejecuta de forma transaccional para evitar operaciones parciales.
@@ -373,7 +374,7 @@ GameCore
 Desde la raíz del repositorio:
 
 ```powershell
-sqlcmd -S localhost -E -i database/setup.sql
+sqlcmd -S localhost -E -f 65001 -i database/setup.sql
 ```
 
 El script instala:
