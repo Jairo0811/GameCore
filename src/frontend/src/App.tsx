@@ -45,11 +45,11 @@ function Login({onToken}:{onToken:(token:string)=>void}){
   async function submit(e:FormEvent){e.preventDefault();try{onToken((await login(email,password)).token)}catch(err){setError(err instanceof Error?err.message:'Error')}}
   return <div className="login-page">
     <div className="login-brand-panel">
-      <img src="/brand/gamecore-logo.svg" className="login-logo" alt="GameCore"/>
+      <img src="/brand/gamecore-login-cover.png" className="login-logo" alt="GameCore"/>
       <p>PLAY · STORE · MANAGE · GROW</p>
     </div>
     <form className="login-card" onSubmit={submit}>
-      <img src="/brand/gamecore-icon.svg" className="login-icon" alt=""/>
+      <img src="/brand/gamecore-logo.png" className="login-icon" alt=""/>
       <h1>Bienvenido</h1><p>Accede a GameCore para continuar</p>
       <label>Correo<input value={email} onChange={e=>setEmail(e.target.value)}/></label>
       <label>Contraseña<input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label>
