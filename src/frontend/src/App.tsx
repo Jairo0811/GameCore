@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { api, login } from './api'
 
 type Section='dashboard'|'games'|'customers'|'sales'|'employees'|'distributions'
@@ -279,7 +279,7 @@ function humanize(key:string){return key.replace(/([a-z])([A-Z])/g,'$1 $2').repl
 
 function Icon({name}:{name:IconName}){
   const common={width:18,height:18,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.8,strokeLinecap:'round' as const,strokeLinejoin:'round' as const,'aria-hidden':true}
-  const paths:Record<IconName,JSX.Element>={
+  const paths:Record<IconName,ReactNode>={
     dashboard:<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
     game:<><path d="M8.5 8h7a5.5 5.5 0 0 1 5.3 7l-1 3.2a2.2 2.2 0 0 1-3.7.9L14 17h-4l-2.1 2.1a2.2 2.2 0 0 1-3.7-.9L3.2 15a5.5 5.5 0 0 1 5.3-7Z"/><path d="M7 12v4M5 14h4M16.5 13h.01M18.5 15h.01"/></>,
     users:<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></>,
