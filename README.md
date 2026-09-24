@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="src/frontend/public/brand/gamecore-logo.svg" alt="GameCore" width="760" />
+<img src="src/frontend/public/brand/gamecore-logo.png" alt="GameCore" width="760" />
 
 <br/>
 
@@ -282,7 +282,7 @@ Los assets utilizados por la aplicación están incluidos en:
 
 ```text
 src/frontend/public/brand/
-├── gamecore-logo.svg
+├── gamecore-logo.png
 └── gamecore-icon.svg
 ```
 
