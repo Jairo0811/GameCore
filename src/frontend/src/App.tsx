@@ -26,8 +26,7 @@ export default function App(){
   return <div className="app-shell">
     <aside>
       <div className="brand">
-        <img src="/brand/gamecore-icon.svg" alt="" className="brand-icon"/>
-        <div><strong>GameCore</strong><small>Management System</small></div>
+        <img src="/brand/gamecore-logo.svg" alt="GameCore" className="brand-logo"/>
       </div>
       <nav>{sections.map(([k,l])=><button key={k} className={section===k?'active':''} onClick={()=>setSection(k)}>{l}</button>)}</nav>
       <div className="brand-signature">PLAY · STORE · MANAGE · GROW</div>
