@@ -44,19 +44,77 @@ function Login({onToken}:{onToken:(token:string)=>void}){
   const [email,setEmail]=useState('admin@gamecore.local'),[password,setPassword]=useState('GameCore123!'),[error,setError]=useState('')
   async function submit(e:FormEvent){e.preventDefault();try{onToken((await login(email,password)).token)}catch(err){setError(err instanceof Error?err.message:'Error')}}
   return <div className="login-page">
-    <div className="login-brand-panel">
-  
-      <p>PLAY · STORE · MANAGE · GROW</p>
-    </div>
-    <form className="login-card" onSubmit={submit}>
-      <img src="/brand/gamecore-logo.png" className="login-icon" alt=""/>
-      <h1>Bienvenido</h1><p>Accede a GameCore para continuar</p>
-      <label>Correo<input value={email} onChange={e=>setEmail(e.target.value)}/></label>
-      <label>Contraseña<input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label>
-      {error&&<div className="error">{error}</div>}
-      <button type="submit">Entrar a GameCore</button>
-      <small>Cuenta demo local de la restauración académica.</small>
-    </form>
+    <section className="login-hero" aria-label="GameCore — Database + Gaming">
+      <div className="login-hero-shade"/>
+      <div className="login-hero-badges">
+        <span>SQL Server</span>
+        <span>.NET 10</span>
+        <span>React</span>
+      </div>
+      <div className="login-hero-caption">
+        <span className="hero-kicker">DATABASE + GAMING</span>
+        <strong>Datos que impulsan el juego.</strong>
+        <small>PLAY · STORE · MANAGE · GROW</small>
+      </div>
+    </section>
+
+    <section className="login-access">
+      <form className="login-card" onSubmit={submit}>
+        <div className="login-card-brand">
+          <img src="/brand/gamecore-icon.svg" className="login-icon" alt="GameCore"/>
+          <div>
+            <span>GAMECORE</span>
+            <small>VIDEO GAME MANAGEMENT SYSTEM</small>
+          </div>
+        </div>
+
+        <div className="login-heading">
+          <h1>Bienvenido</h1>
+          <p>Accede a tu centro de gestión.</p>
+        </div>
+
+        <label>
+          Correo
+          <input
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={e=>setEmail(e.target.value)}
+          />
+        </label>
+
+        <label>
+          Contraseña
+          <input
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={e=>setPassword(e.target.value)}
+          />
+        </label>
+
+        {error&&<div className="error">{error}</div>}
+
+        <button type="submit">
+          <span>Entrar a GameCore</span>
+          <span aria-hidden="true">→</span>
+        </button>
+
+        <div className="login-demo-note">
+          <span/>
+          <small>Cuenta demo local para validación del proyecto.</small>
+          <span/>
+        </div>
+      </form>
+
+      <footer className="login-footer">
+        <span>GameCore</span>
+        <span>•</span>
+        <span>SOF-006</span>
+        <span>•</span>
+        <span>Restauración 2026</span>
+      </footer>
+    </section>
   </div>
 }
 function View({section,data}:{section:Section,data:unknown}){
