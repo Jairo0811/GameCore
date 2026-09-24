@@ -73,8 +73,10 @@ public static class ApiEndpoints
             .OrderBy(x => x.Title)
             .Select(x => new
             {
-                x.GameId, x.Title, x.Story, x.ReleaseDate, x.UnitPrice, x.IsActive,
+                x.GameId, x.Title, x.Story, x.ReleaseDate, x.UnitPrice, x.IsActive, x.AgeRatingId,
                 AgeRating = x.AgeRating == null ? null : x.AgeRating.Code,
+                GenreIds = x.GameGenres.Select(g => g.GenreId).ToArray(),
+                PlatformIds = x.GamePlatforms.Select(p => p.PlatformId).ToArray(),
                 Genres = x.GameGenres.Select(g => g.Genre.Name).ToArray(),
                 Platforms = x.GamePlatforms.Select(p => p.Platform.Name).ToArray()
             }).ToListAsync();
@@ -227,22 +229,51 @@ public static class ApiEndpoints
             .OrderBy(x => x.FirstName)
             .Select(x => new
             {
-                x.EmployeeId, x.FirstName, x.LastName, x.Email, x.Phone, x.IsActive,
+                x.EmployeeId, x.BranchId, x.JobPositionId, x.FirstName, x.LastName, x.Email, x.Phone, x.AddressLine, x.IsActive,
                 Branch = x.Branch.Name, Position = x.JobPosition.Name
             }).ToListAsync());
 
     private static async Task<IResult> CreateEmployeeAsync(EmployeeWriteRequest request, GameCoreDbContext db)
     {
+        if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName))
+            return Results.BadRequest(new { error = "First and last name are required." });
+
         var employee = new Employee
         {
-            BranchId = request.BranchId, JobPositionId = request.JobPositionId,
-            FirstName = request.FirstName.Trim(), LastName = request.LastName.Trim(),
-            Phone = request.Phone?.Trim(), Email = request.Email?.Trim().ToLowerInvariant(),
-            AddressLine = request.AddressLine?.Trim(), IsActive = true
+            BranchId = request.BranchId,
+            JobPositionId = request.JobPositionId,
+            FirstName = request.FirstName.Trim(),
+            LastName = request.LastName.Trim(),
+            Phone = request.Phone?.Trim(),
+            Email = request.Email?.Trim().ToLowerInvariant(),
+            AddressLine = request.AddressLine?.Trim(),
+            IsActive = request.IsActive
         };
+
         db.Employees.Add(employee);
         await db.SaveChangesAsync();
         return Results.Created($"/api/employees/{employee.EmployeeId}", new { employee.EmployeeId });
+    }
+
+    private static async Task<IResult> UpdateEmployeeAsync(int id, EmployeeWriteRequest request, GameCoreDbContext db)
+    {
+        var employee = await db.Employees.SingleOrDefaultAsync(x => x.EmployeeId == id);
+        if (employee is null) return Results.NotFound();
+
+        if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName))
+            return Results.BadRequest(new { error = "First and last name are required." });
+
+        employee.BranchId = request.BranchId;
+        employee.JobPositionId = request.JobPositionId;
+        employee.FirstName = request.FirstName.Trim();
+        employee.LastName = request.LastName.Trim();
+        employee.Phone = request.Phone?.Trim();
+        employee.Email = request.Email?.Trim().ToLowerInvariant();
+        employee.AddressLine = request.AddressLine?.Trim();
+        employee.IsActive = request.IsActive;
+
+        await db.SaveChangesAsync();
+        return Results.NoContent();
     }
 
     private static async Task<IResult> GetDistributionsAsync(GameCoreDbContext db) =>
@@ -369,6 +400,70 @@ public static class ApiEndpoints
         });
     }
 
+    private static async Task<IResult> GetReportsAsync(GameCoreDbContext db)
+    {
+        var monthlySales = await db.Sales.AsNoTracking()
+            .Where(x => x.Status == "Completed")
+            .Select(x => new
+            {
+                x.SaleDate,
+                Total = x.SaleDetails.Sum(d => d.Quantity * d.UnitPrice)
+            })
+            .GroupBy(x => new { x.SaleDate.Year, x.SaleDate.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                Sales = g.Count(),
+                Revenue = g.Sum(x => x.Total)
+            })
+            .OrderBy(x => x.Year)
+            .ThenBy(x => x.Month)
+            .ToListAsync();
+
+        var topGames = await db.SaleDetails.AsNoTracking()
+            .Where(x => x.Sale.Status == "Completed")
+            .GroupBy(x => new { x.GameId, x.Game.Title })
+            .Select(g => new
+            {
+                g.Key.GameId,
+                g.Key.Title,
+                UnitsSold = g.Sum(x => x.Quantity),
+                Revenue = g.Sum(x => x.Quantity * x.UnitPrice)
+            })
+            .OrderByDescending(x => x.Revenue)
+            .ThenByDescending(x => x.UnitsSold)
+            .ToListAsync();
+
+        var customers = await db.Customers.AsNoTracking()
+            .Select(x => new
+            {
+                x.CustomerId,
+                Customer = x.FirstName + " " + x.LastName,
+                Sales = x.Sales.Count(s => s.Status == "Completed"),
+                LifetimeValue = x.Sales
+                    .Where(s => s.Status == "Completed")
+                    .SelectMany(s => s.SaleDetails)
+                    .Sum(d => (decimal?)(d.Quantity * d.UnitPrice)) ?? 0m
+            })
+            .OrderByDescending(x => x.LifetimeValue)
+            .ToListAsync();
+
+        var countries = await db.Distributions.AsNoTracking()
+            .GroupBy(x => new { x.CountryId, x.Country.Name })
+            .Select(g => new
+            {
+                g.Key.CountryId,
+                Country = g.Key.Name,
+                DistributedUnits = g.Sum(x => x.Units),
+                Games = g.Select(x => x.GameId).Distinct().Count()
+            })
+            .OrderByDescending(x => x.DistributedUnits)
+            .ToListAsync();
+
+        return Results.Ok(new { monthlySales, topGames, customers, countries });
+    }
+
     private static bool VerifyPassword(string password, string encoded)
     {
         var parts = encoded.Split('.');
@@ -386,5 +481,5 @@ public sealed record GameWriteRequest(string Title, string? Story, DateOnly? Rel
 public sealed record CustomerWriteRequest(string FirstName, string LastName, string? Phone, string? Email);
 public sealed record SaleItemRequest(int GameId, int Quantity);
 public sealed record SaleCreateRequest(int CustomerId, int? EmployeeId, SaleItemRequest[] Items);
-public sealed record EmployeeWriteRequest(int BranchId, int JobPositionId, string FirstName, string LastName, string? Phone, string? Email, string? AddressLine);
+public sealed record EmployeeWriteRequest(int BranchId, int JobPositionId, string FirstName, string LastName, string? Phone, string? Email, string? AddressLine, bool IsActive = true);
 public sealed record DistributionWriteRequest(int GameId, int CountryId, DateOnly DistributionDate, int Units);

@@ -25,7 +25,7 @@ This folder contains the SQL Server implementation of the GameCore database.
 From the repository root:
 
 ```powershell
-sqlcmd -S localhost -E -i database/setup.sql
+sqlcmd -S localhost -E -f 65001 -i database/setup.sql
 ```
 
 For SQL Server Express:
@@ -37,8 +37,8 @@ sqlcmd -S .\SQLEXPRESS -E -i database/setup.sql
 ## Rebuild during development
 
 ```powershell
-sqlcmd -S localhost -E -i database/reset.sql
-sqlcmd -S localhost -E -i database/setup.sql
+sqlcmd -S localhost -E -f 65001 -i database/reset.sql
+sqlcmd -S localhost -E -f 65001 -i database/setup.sql
 ```
 
 For SQL Server Express:
@@ -107,3 +107,20 @@ The database now demonstrates:
 - `XACT_ABORT`
 - validation with `THROW`
 - reusable business/reporting queries
+
+
+## Recommended UTF-8 bootstrap
+
+To avoid mojibake in names such as `Pokémon`, `Matías`, `Núñez`, `México`, and `República Dominicana`, run SQLCMD explicitly as UTF-8:
+
+```powershell
+.\scripts\setup-db.ps1
+```
+
+For SQL Server Express:
+
+```powershell
+.\scripts\setup-db.ps1 -SqlExpress
+```
+
+The wrapper uses `sqlcmd -f 65001` so Unicode literals in the seed are read correctly before they reach the `nvarchar` columns.
