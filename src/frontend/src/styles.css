@@ -34,23 +34,17 @@ aside {
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  min-height: 82px;
+  padding: 2px 4px 10px;
 }
-.brand-icon {
-  width: 58px;
-  height: 58px;
+.brand-logo {
+  width: 100%;
+  max-width: 205px;
+  height: auto;
   object-fit: contain;
-  filter: drop-shadow(0 0 14px #1685ff88);
+  filter: drop-shadow(0 0 16px rgba(22, 133, 255, .26));
 }
-.brand div {
-  display: flex;
-  flex-direction: column;
-}
-.brand strong {
-  font-size: 20px;
-  letter-spacing: -0.02em;
-}
-.brand small,
 .muted {
   color: #8594b7;
 }
@@ -497,9 +491,8 @@ th {
     grid-template-columns: 1fr;
   }
 
-  .brand-icon {
-    width: 48px;
-    height: 48px;
+  .brand-logo {
+    max-width: 190px;
   }
 
   .login-hero {
