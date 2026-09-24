@@ -386,7 +386,11 @@ function GameForm({row,catalogs,busy,onSubmit}:{row?:Row,catalogs:Catalogs|null,
   const [platformIds,setPlatformIds]=useState<number[]>((row?.platformIds as number[]|undefined)??[])
   const [isActive,setIsActive]=useState(row?.isActive===undefined?true:Boolean(row.isActive))
 
-  return <form className="resource-form" onSubmit={e=>{e.preventDefault();onSubmit({title,story:story||null,releaseDate:releaseDate||null,unitPrice,ageRatingId:ageRatingId||null,genreIds,platformIds,isActive})}}>
+  return <form className="resource-form" onSubmit={e=>{
+    e.preventDefault()
+    if(row?.isActive===true&&!isActive&&!window.confirm('¿Desactivar este videojuego? Seguirá en el historial, pero dejará de estar disponible para nuevas ventas.'))return
+    onSubmit({title,story:story||null,releaseDate:releaseDate||null,unitPrice,ageRatingId:ageRatingId||null,genreIds,platformIds,isActive})
+  }}>
     <Field label="Título"><input value={title} onChange={e=>setTitle(e.target.value)} required/></Field>
     <Field label="Historia / descripción"><textarea value={story} onChange={e=>setStory(e.target.value)} rows={4}/></Field>
     <div className="form-grid"><Field label="Lanzamiento"><input type="date" value={releaseDate} onChange={e=>setReleaseDate(e.target.value)}/></Field><Field label="Precio"><input type="number" min="0" step="0.01" value={unitPrice} onChange={e=>setUnitPrice(Number(e.target.value))} required/></Field></div>
