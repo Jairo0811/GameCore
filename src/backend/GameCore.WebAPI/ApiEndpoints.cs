@@ -287,15 +287,73 @@ public static class ApiEndpoints
 
     private static async Task<IResult> GetDashboardAsync(GameCoreDbContext db)
     {
-        var completedIds = db.Sales.Where(x => x.Status == "Completed").Select(x => x.SaleId);
-        var revenue = await db.SaleDetails.Where(x => completedIds.Contains(x.SaleId))
+        var completedIds = db.Sales
+            .Where(x => x.Status == "Completed")
+            .Select(x => x.SaleId);
+
+        var revenue = await db.SaleDetails
+            .Where(x => completedIds.Contains(x.SaleId))
             .SumAsync(x => (decimal?)(x.Quantity * x.UnitPrice)) ?? 0m;
 
         var topGames = await db.SaleDetails.AsNoTracking()
             .Where(x => x.Sale.Status == "Completed")
             .GroupBy(x => new { x.GameId, x.Game.Title })
-            .Select(g => new { g.Key.GameId, g.Key.Title, UnitsSold = g.Sum(x => x.Quantity), Revenue = g.Sum(x => x.Quantity * x.UnitPrice) })
-            .OrderByDescending(x => x.UnitsSold).Take(5).ToListAsync();
+            .Select(g => new
+            {
+                g.Key.GameId,
+                g.Key.Title,
+                UnitsSold = g.Sum(x => x.Quantity),
+                Revenue = g.Sum(x => x.Quantity * x.UnitPrice)
+            })
+            .OrderByDescending(x => x.UnitsSold)
+            .ThenByDescending(x => x.Revenue)
+            .Take(5)
+            .ToListAsync();
+
+        var monthlySales = await db.Sales.AsNoTracking()
+            .Where(x => x.Status == "Completed")
+            .SelectMany(x => x.SaleDetails, (sale, detail) => new
+            {
+                sale.SaleDate,
+                Amount = detail.Quantity * detail.UnitPrice
+            })
+            .GroupBy(x => new { x.SaleDate.Year, x.SaleDate.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                SalesCount = g.Select(x => x.SaleDate).Distinct().Count(),
+                Revenue = g.Sum(x => x.Amount)
+            })
+            .OrderBy(x => x.Year)
+            .ThenBy(x => x.Month)
+            .Take(12)
+            .ToListAsync();
+
+        var recentSales = await db.Sales.AsNoTracking()
+            .Where(x => x.Status == "Completed")
+            .OrderByDescending(x => x.SaleDate)
+            .Take(5)
+            .Select(x => new
+            {
+                x.SaleId,
+                x.SaleDate,
+                Customer = x.Customer.FirstName + " " + x.Customer.LastName,
+                Total = x.SaleDetails.Sum(d => d.Quantity * d.UnitPrice)
+            })
+            .ToListAsync();
+
+        var distributionByCountry = await db.Distributions.AsNoTracking()
+            .GroupBy(x => new { x.CountryId, x.Country.Name })
+            .Select(g => new
+            {
+                g.Key.CountryId,
+                Country = g.Key.Name,
+                Units = g.Sum(x => x.Units)
+            })
+            .OrderByDescending(x => x.Units)
+            .Take(5)
+            .ToListAsync();
 
         return Results.Ok(new
         {
@@ -304,7 +362,10 @@ public static class ApiEndpoints
             sales = await db.Sales.CountAsync(x => x.Status == "Completed"),
             employees = await db.Employees.CountAsync(x => x.IsActive),
             revenue,
-            topGames
+            topGames,
+            monthlySales,
+            recentSales,
+            distributionByCountry
         });
     }
 
