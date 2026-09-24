@@ -28,6 +28,6 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: src/frontend/package.json
-      - run: npm install
+      - run: npm ci
       - run: npm run build
       - run: npm audit --audit-level=high
