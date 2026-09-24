@@ -312,18 +312,18 @@ public static class ApiEndpoints
 
         var monthlySales = await db.Sales.AsNoTracking()
             .Where(x => x.Status == "Completed")
-            .SelectMany(x => x.SaleDetails, (sale, detail) => new
+            .Select(x => new
             {
-                sale.SaleDate,
-                Amount = detail.Quantity * detail.UnitPrice
+                x.SaleDate,
+                Total = x.SaleDetails.Sum(d => d.Quantity * d.UnitPrice)
             })
             .GroupBy(x => new { x.SaleDate.Year, x.SaleDate.Month })
             .Select(g => new
             {
                 g.Key.Year,
                 g.Key.Month,
-                SalesCount = g.Select(x => x.SaleDate).Distinct().Count(),
-                Revenue = g.Sum(x => x.Amount)
+                SalesCount = g.Count(),
+                Revenue = g.Sum(x => x.Total)
             })
             .OrderBy(x => x.Year)
             .ThenBy(x => x.Month)
