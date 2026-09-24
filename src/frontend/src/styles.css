@@ -199,7 +199,6 @@ th {
   background: url('/brand/gamecore-login-cover.png') center center / contain no-repeat;
   z-index: -1;
 }
-}
 
 .login-hero::before {
   content: "";
