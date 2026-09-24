@@ -73,8 +73,10 @@ public static class ApiEndpoints
             .OrderBy(x => x.Title)
             .Select(x => new
             {
-                x.GameId, x.Title, x.Story, x.ReleaseDate, x.UnitPrice, x.IsActive,
+                x.GameId, x.Title, x.Story, x.ReleaseDate, x.UnitPrice, x.IsActive, x.AgeRatingId,
                 AgeRating = x.AgeRating == null ? null : x.AgeRating.Code,
+                GenreIds = x.GameGenres.Select(g => g.GenreId).ToArray(),
+                PlatformIds = x.GamePlatforms.Select(p => p.PlatformId).ToArray(),
                 Genres = x.GameGenres.Select(g => g.Genre.Name).ToArray(),
                 Platforms = x.GamePlatforms.Select(p => p.Platform.Name).ToArray()
             }).ToListAsync();
@@ -227,7 +229,7 @@ public static class ApiEndpoints
             .OrderBy(x => x.FirstName)
             .Select(x => new
             {
-                x.EmployeeId, x.FirstName, x.LastName, x.Email, x.Phone, x.IsActive,
+                x.EmployeeId, x.BranchId, x.JobPositionId, x.FirstName, x.LastName, x.Email, x.Phone, x.AddressLine, x.IsActive,
                 Branch = x.Branch.Name, Position = x.JobPosition.Name
             }).ToListAsync());
 
