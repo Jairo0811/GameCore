@@ -323,6 +323,21 @@ Ese código **no fue reescrito para ocultar sus limitaciones**. Se conserva como
 
 ---
 
+## 🧭 Continuidad académica
+
+### 👨‍🏫 Continuidad por profesor
+
+**GameCore** y [**PySL**](https://github.com/Jairo0811/PySL) documentan dos proyectos académicos distintos cursados con el profesor **Freidy Ramón Núñez Pérez** durante el mismo período **2016-C2**.
+
+| Orden | Asignatura | Proyecto | Período |
+|---:|---|---|---|
+| 1 | Fundamentos de Programación (SOF-001) | [**PySL**](https://github.com/Jairo0811/PySL) | 2016-C2 |
+| 2 | Introducción a las Bases de Datos (SOF-006) | **GameCore** | 2016-C2 |
+
+La relación es **académica, docente y formativa**. Ambos proyectos corresponden a asignaturas diferentes cursadas en paralelo durante el mismo cuatrimestre y no existe dependencia técnica entre ellos.
+
+---
+
 ## 🔄 Evolución del proyecto
 
 ```text
