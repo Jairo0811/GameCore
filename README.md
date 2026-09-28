@@ -1,10 +1,9 @@
 <div align="center">
 
-<img src="src/frontend/public/brand/gamecore-logo.png" alt="GameCore" width="760" />
+<img src="src/frontend/public/brand/gamecore-cover.png" alt="GameCore" width="760" />
 
 <br/>
 
-# GameCore
 
 **Video Game Management System**
 
