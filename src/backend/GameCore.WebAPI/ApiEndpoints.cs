@@ -28,10 +28,12 @@ public static class ApiEndpoints
         secured.MapPost("/sales", CreateSaleAsync);
         secured.MapGet("/employees", GetEmployeesAsync);
         secured.MapPost("/employees", CreateEmployeeAsync);
+        secured.MapPut("/employees/{id:int}", UpdateEmployeeAsync);
         secured.MapGet("/distributions", GetDistributionsAsync);
         secured.MapPost("/distributions", UpsertDistributionAsync);
         secured.MapGet("/catalogs", GetCatalogsAsync);
         secured.MapGet("/dashboard", GetDashboardAsync);
+        secured.MapGet("/reports", GetReportsAsync);
         return endpoints;
     }
 
