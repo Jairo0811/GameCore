@@ -2,6 +2,11 @@
 
 <img src="src/frontend/public/brand/gamecore-cover.png" alt="GameCore" width="760" />
 
+<p align="center">
+<img src="https://img.shields.io/badge/ITLA-SOF--006-0057B8?style=for-the-badge" alt="ITLA SOF-006" />
+</p>
+
+
 <br/>
 
 
