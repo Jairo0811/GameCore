@@ -6,7 +6,7 @@
   - GameCoreDB missing  -> runs database/setup.sql (schema, seed, AppUsers, advanced SQL, validations).
   - GameCoreDB present  -> does NOT modify it; runs database/validate.sql and database/advanced/validate.sql.
   - -Upgrade            -> non-destructive: applies database/upgrade-v1.sql to a GameCoreDB created
-                           before v1.0.0 (filtered email indexes, Manager/Viewer users), then validates.
+                           with v1.0.0 or earlier (filtered email indexes, Manager/Viewer users), then validates.
   - -Reset              -> DESTRUCTIVE: drops GameCoreDB (database/reset.sql) and rebuilds it.
                            Asks for confirmation unless -Force is also given.
 
@@ -74,7 +74,7 @@ try {
             Invoke-SqlFile "database/advanced/validate.sql"
         }
         catch {
-            Write-Host "Validation failed. If this GameCoreDB was created before v1.0.0, run: .\scripts\setup-db.ps1 -Upgrade" -ForegroundColor Yellow
+            Write-Host "Validation failed. If this GameCoreDB was created with v1.0.0 or earlier, run: .\scripts\setup-db.ps1 -Upgrade" -ForegroundColor Yellow
             throw
         }
         Write-Host "GameCoreDB is valid." -ForegroundColor Green

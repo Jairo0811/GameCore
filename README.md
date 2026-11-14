@@ -540,9 +540,9 @@ La aplicación moderna utiliza **datos de demostración ficticios**: los nombres
 
 ## 📌 Estado
 
-**v1.0.0: lista para congelar.**
+**v1.0.1: versión congelada.**
 
-El checklist de `docs/RELEASE.md` está verificado en CI. Esto incluye el stack Docker desde cero, `setup-db.ps1`, `release-check.ps1`, el smoke test y la integración con SQL Server 2022. A partir de la etiqueta `v1.0.0` solo se aceptan correcciones críticas o una versión futura planificada.
+El checklist de `docs/RELEASE.md` está verificado en CI. Esto incluye el stack Docker desde cero, `setup-db.ps1`, `release-check.ps1`, el smoke test y la integración con SQL Server 2022. La etiqueta `v1.0.1` es la versión congelada; a partir de ella solo se aceptan correcciones críticas o una versión futura planificada. (`v1.0.0`, del 28-sep-2026, fue la primera versión restaurada, anterior a esta auditoría final.)
 
 ---
 

@@ -1,4 +1,4 @@
--- CI only: turns a v1.0.0 GameCoreDB back into the pre-v1.0.0 shape to exercise database/upgrade-v1.sql.
+-- CI only: turns a v1.0.1 GameCoreDB back into the v1.0.0 shape to exercise database/upgrade-v1.sql.
 :on error exit
 USE GameCoreDB;
 GO
@@ -16,5 +16,5 @@ UPDATE dbo.Employees SET FirstName = N'Demo', LastName = N'Legacy', Email = 'jai
 WHERE Email = 'valeria.demo@gamecore.local';
 COMMIT TRANSACTION;
 GO
-PRINT 'Simulated pre-v1.0.0 GameCoreDB.';
+PRINT 'Simulated v1.0.0 GameCoreDB.';
 GO

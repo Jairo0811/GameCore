@@ -8,7 +8,7 @@ This folder contains the SQL Server implementation of the GameCore database.
 - `seed.sql` — inserts safe demo data inspired by the original SOF-006 project.
 - `security.sql` — `AppUsers` table and local demo accounts (Admin, Manager, Viewer).
 - `validate.sql` — validates core tables, seed data, Unicode text, demo roles, constraints and the filtered unique email indexes (it inserts test rows inside transactions that are always rolled back).
-- `upgrade-v1.sql` — non-destructive, idempotent upgrade of a GameCoreDB created before v1.0.0 (`.\scripts\setup-db.ps1 -Upgrade`).
+- `upgrade-v1.sql` — non-destructive, idempotent upgrade of a GameCoreDB created with v1.0.0 or earlier (`.\scripts\setup-db.ps1 -Upgrade`).
 - `reset.sql` — development-only script that drops `GameCoreDB`.
 - `setup.sql` — SQLCMD bootstrap that installs the full database.
 - `advanced/views.sql` — reporting and catalog views.

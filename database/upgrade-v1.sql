@@ -1,5 +1,5 @@
 /*
- Non-destructive, idempotent upgrade of an existing GameCoreDB (created before v1.0.0) to the v1.0.0 rules.
+ Non-destructive, idempotent upgrade of an existing GameCoreDB (created with v1.0.0 or earlier) to the v1.0.1 rules.
  It does NOT drop the database or delete data. Safe to run more than once.
 
    .\scripts\setup-db.ps1 -Upgrade
@@ -69,5 +69,5 @@ WHERE Email = 'francis.demo@gamecore.local';
 COMMIT TRANSACTION;
 GO
 
-PRINT 'GameCoreDB upgraded to v1.0.0 rules.';
+PRINT 'GameCoreDB upgraded to v1.0.1 rules.';
 GO

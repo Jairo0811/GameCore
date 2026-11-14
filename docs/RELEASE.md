@@ -1,6 +1,9 @@
-# GameCore 1.0 release process
+# GameCore 1.0.1 release process
 
-`v1.0.0` is tagged only on a commit for which **every** item below has passed. If anything fails, fix it on the release branch and start the checklist again.
+> `v1.0.0` (2026-09-28) was the first restored release. `v1.0.1` is the frozen release produced by the final audit
+> (RBAC, validation, Docker, tests, CI); it is the version this checklist verifies.
+
+`v1.0.1` is tagged only on a commit for which **every** item below has passed. If anything fails, fix it on the release branch and start the checklist again.
 
 ## 1. Continuous integration (GitHub Actions — `.github/workflows/ci.yml`)
 
@@ -15,7 +18,7 @@ Runs on pushes to `main` and `release/**` and on pull requests.
 All three jobs must be green on the commit to be tagged. Besides the checks above, `full-stack` also runs
 `setup-db.ps1 -Reset` (drop + full create while the API is connected), `setup-db.ps1` (validate only),
 the complete `release-check.ps1 -IncludeSqlServerTests` against the Docker SQL Server, and the upgrade path
-of `database/upgrade-v1.sql` on a simulated pre-v1.0.0 database.
+of `database/upgrade-v1.sql` on a simulated v1.0.0 database.
 
 ## 2. Local verification (Windows + SQL Server)
 
@@ -38,7 +41,7 @@ From the repository root:
 5. **Smoke test** (read-only): health with database, login for Admin/Manager/Viewer, invalid login, anonymous access, Dashboard, Reports, Games, Customers, Sales, Employees, Distributions, Catalogs, Viewer write protection (403) and pre-database validation (duplicated `GameId` in a sale returns 400).
 6. **SQL Server integration tests** (`-IncludeSqlServerTests`): run against the real database and create demo rows.
 
-It ends with `GAMECORE v1.0.0 RELEASE CHECK PASSED`.
+It ends with `GAMECORE v1.0.1 RELEASE CHECK PASSED`.
 
 ## 3. Manual UI pass
 
@@ -55,8 +58,8 @@ Replace the demo accounts and set a real `Jwt__Key` (≥ 32 bytes, not starting 
 ## 5. Tag
 
 ```powershell
-git tag -a v1.0.0 -m "GameCore v1.0.0"
-git push origin v1.0.0
+git tag -a v1.0.1 -m "GameCore v1.0.1"
+git push origin v1.0.1
 ```
 
 After tagging, the project is frozen: only critical bug fixes or a planned future version.

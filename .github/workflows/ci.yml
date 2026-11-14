@@ -118,7 +118,7 @@ jobs:
         run: ./scripts/release-check.ps1 -ApiUrl http://localhost:8080 -Server 'localhost,1433' -SqlUser sa -SqlPassword 'GameCore_Local_2026!' -IncludeSqlServerTests
       - name: Restart keeps existing database (db-init is non-destructive)
         run: docker compose run --rm db-init | tee db-init-rerun.log && grep -q "Existing GameCoreDB is valid" db-init-rerun.log
-      - name: Upgrade path (pre-v1.0.0 database -> upgrade-v1.sql -> valid)
+      - name: Upgrade path (v1.0.0 database -> upgrade-v1.sql -> valid)
         run: |
           docker compose run --rm -v "$PWD/.github/ci:/ci:ro" --entrypoint /bin/bash db-init -c '
             set -euo pipefail
@@ -126,7 +126,7 @@ jobs:
             run() { "$S" -S sqlserver -U sa -P "$MSSQL_SA_PASSWORD" -C -I -b -f 65001 -i "$1"; }
             cd /gamecore
             run /ci/simulate-pre-v1.sql
-            if run database/validate.sql; then echo "validate.sql should reject the pre-v1 schema"; exit 1; fi
+            if run database/validate.sql; then echo "validate.sql should reject the v1.0.0 schema"; exit 1; fi
             run database/upgrade-v1.sql
             run database/upgrade-v1.sql   # idempotent
             run database/validate.sql
