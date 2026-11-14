@@ -60,6 +60,31 @@ jobs:
       - run: npm test
       - run: npm audit --audit-level=high
 
+  windows-powershell:
+    # The scripts are run by Windows PowerShell 5.1 on the maintainer's machine; a fake sqlcmd records
+    # the exact arguments it receives so 5.1-specific argument passing bugs are caught.
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v5
+      - name: setup-db.ps1 argument passing (Windows auth and SQL auth)
+        shell: powershell
+        run: |
+          $PSVersionTable.PSVersion
+          $fake = Join-Path $env:RUNNER_TEMP "fake-sqlcmd"
+          New-Item -ItemType Directory -Force $fake | Out-Null
+          $log = Join-Path $env:RUNNER_TEMP "sqlcmd-args.txt"
+          Set-Content (Join-Path $fake "sqlcmd.cmd") "@echo %* >> `"$log`"`r`n@echo 0`r`n@exit /b 0" -Encoding ascii
+          $env:PATH = "$fake;$env:PATH"
+          .\scripts\setup-db.ps1
+          .\scripts\setup-db.ps1 -Server 'localhost,1433' -User sa -Password 'Secret_123!'
+          $lines = Get-Content $log
+          $lines | ForEach-Object { Write-Host "sqlcmd $_" }
+          if ($lines.Count -ne 4) { throw "Expected 4 sqlcmd calls, got $($lines.Count)." }
+          if ($lines[0] -notmatch '^-S localhost -E -C -b -h -1 -W -Q ') { throw "Windows auth probe arguments are wrong: $($lines[0])" }
+          if ($lines[1] -notmatch '^-S localhost -E -C -I -b -f 65001 -i database/setup.sql') { throw "Windows auth setup arguments are wrong: $($lines[1])" }
+          if ($lines[2] -notmatch '^-S localhost,1433 -U sa -P Secret_123! -C -b -h -1 -W -Q ') { throw "SQL auth probe arguments are wrong: $($lines[2])" }
+          if ($lines[3] -notmatch '^-S localhost,1433 -U sa -P Secret_123! -C -I -b -f 65001 -i database/setup.sql') { throw "SQL auth setup arguments are wrong: $($lines[3])" }
+
   full-stack:
     # Builds and starts the real docker compose stack from scratch (SQL Server + db-init + API + frontend),
     # then runs the PowerShell smoke test and the SQL Server integration tests against it.

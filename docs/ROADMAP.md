@@ -55,5 +55,5 @@ setup-db / smoke-test / release-check scripts. Screenshots are not part of v1.
 Finalize documentation and publish the restored project as a completed portfolio piece.
 
 Delivered: release checklist verified in CI on the release branch (Docker stack from scratch,
-setup-db.ps1, release-check.ps1, smoke test, SQL Server integration tests). Tagged `v1.0.1` (frozen release);
+setup-db.ps1, release-check.ps1, smoke test, SQL Server integration tests). Tagged `v1.0.1` (frozen release) and `v1.0.2` (critical fix: setup-db.ps1 on Windows PowerShell 5.1);
 `v1.0.0` (2026-09-28) was the first restored release, before the final audit.

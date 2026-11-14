@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  GameCore v1.0.1 release check: database, backend, frontend, audits, API and smoke test in one command.
+  GameCore v1.0.2 release check: database, backend, frontend, audits, API and smoke test in one command.
 
 .DESCRIPTION
   1. Database   : installs GameCoreDB if missing, otherwise validates it (schema, Unicode, filtered email
@@ -143,7 +143,7 @@ try {
     }
 
     Write-Host ""
-    Write-Host "GAMECORE v1.0.1 RELEASE CHECK PASSED" -ForegroundColor Green
+    Write-Host "GAMECORE v1.0.2 RELEASE CHECK PASSED" -ForegroundColor Green
 }
 finally {
     if ($apiProcess -and -not $apiProcess.HasExited) {

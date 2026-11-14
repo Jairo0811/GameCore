@@ -1,7 +1,9 @@
-# GameCore 1.0.1 release process
+# GameCore 1.0.x release process
 
 > `v1.0.0` (2026-09-28) was the first restored release. `v1.0.1` is the frozen release produced by the final audit
 > (RBAC, validation, Docker, tests, CI); it is the version this checklist verifies.
+> `v1.0.2` is a critical fix on top of it: `setup-db.ps1` passed broken arguments to sqlcmd with Windows
+> authentication on Windows PowerShell 5.1. CI now also runs the scripts' argument handling on Windows PowerShell 5.1.
 
 `v1.0.1` is tagged only on a commit for which **every** item below has passed. If anything fails, fix it on the release branch and start the checklist again.
 
@@ -13,6 +15,7 @@ Runs on pushes to `main` and `release/**` and on pull requests.
 |---|---|
 | `backend` | PowerShell scripts parse; `dotnet restore`; Release build; `dotnet test` (unit + API over SQLite); NuGet vulnerability audit (fails if any package is reported) |
 | `frontend` | `npm ci`; production build; `npm test`; `npm audit --audit-level=high` |
+| `windows-powershell` | Windows PowerShell 5.1 runs `setup-db.ps1` (Windows and SQL auth) against a fake sqlcmd that records the exact arguments |
 | `full-stack` | `docker compose config`; `docker compose up -d --build` **from scratch**; API `/health` (includes GameCoreDB); frontend served; `scripts/smoke-test.ps1`; SQL Server integration tests; re-running `db-init` keeps the existing database |
 
 All three jobs must be green on the commit to be tagged. Besides the checks above, `full-stack` also runs
@@ -41,7 +44,7 @@ From the repository root:
 5. **Smoke test** (read-only): health with database, login for Admin/Manager/Viewer, invalid login, anonymous access, Dashboard, Reports, Games, Customers, Sales, Employees, Distributions, Catalogs, Viewer write protection (403) and pre-database validation (duplicated `GameId` in a sale returns 400).
 6. **SQL Server integration tests** (`-IncludeSqlServerTests`): run against the real database and create demo rows.
 
-It ends with `GAMECORE v1.0.1 RELEASE CHECK PASSED`.
+It ends with `GAMECORE v1.0.2 RELEASE CHECK PASSED`.
 
 ## 3. Manual UI pass
 
@@ -58,8 +61,8 @@ Replace the demo accounts and set a real `Jwt__Key` (≥ 32 bytes, not starting 
 ## 5. Tag
 
 ```powershell
-git tag -a v1.0.1 -m "GameCore v1.0.1"
-git push origin v1.0.1
+git tag -a v1.0.2 -m "GameCore v1.0.2"
+git push origin v1.0.2
 ```
 
 After tagging, the project is frozen: only critical bug fixes or a planned future version.

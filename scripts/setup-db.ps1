@@ -37,7 +37,9 @@ if (-not (Get-Command sqlcmd -ErrorAction SilentlyContinue)) {
 
 # -C trusts the local self-signed certificate (required by ODBC Driver 18 / go-sqlcmd defaults).
 # -I enables QUOTED_IDENTIFIER, as SSMS and SqlClient do (needed for tables with filtered indexes).
-$auth = if ($User) { @("-U", $User, "-P", $Password) } else { @("-E") }
+# @(...) keeps an array even with one element: an 'if' returning @("-E") is unrolled to a plain string,
+# and splatting a string sends garbage arguments to sqlcmd on Windows PowerShell 5.1.
+[string[]]$auth = @(if ($User) { "-U", $User, "-P", $Password } else { "-E" })
 
 function Invoke-SqlFile([string]$File) {
     & sqlcmd -S $Server @auth -C -I -b -f 65001 -i $File

@@ -67,7 +67,7 @@ app.UseCors("frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", () => Results.Ok(new { service = "GameCore API", version = "1.0.1", status = "ready" }));
+app.MapGet("/", () => Results.Ok(new { service = "GameCore API", version = "1.0.2", status = "ready" }));
 app.MapHealthChecks("/health", new HealthCheckOptions { ResponseWriter = HealthResponseWriter.WriteAsync });
 app.MapGameCoreApi();
 app.Run();
