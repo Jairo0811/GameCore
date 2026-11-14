@@ -1,9 +1,9 @@
-import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
-import { api, login } from './api'
+import { FormEvent, ReactNode, RefObject, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { ApiError, api, login, setUnauthorizedHandler } from './api'
+import { canWrite, clearSession, readSession, saveSession, type Session } from './session'
 
 type Section='dashboard'|'games'|'customers'|'sales'|'employees'|'distributions'|'reports'
 type IconName='dashboard'|'game'|'users'|'cart'|'briefcase'|'globe'|'money'|'refresh'|'chart'|'clock'|'reports'|'search'|'plus'|'edit'|'close'|'user'|'chevron'
-type Session={token:string,email:string,role:string}
 type Row=Record<string,unknown>
 
 type DashboardData={
@@ -58,10 +58,12 @@ const routeToSection=():Section=>{
 }
 
 export default function App(){
-  const stored=sessionStorage.getItem('gamecore_session')
-  const [session,setSession]=useState<Session|null>(stored?JSON.parse(stored):null)
+  const [session,setSession]=useState<Session|null>(()=>readSession(window.sessionStorage))
+  const [notice,setNotice]=useState('')
   const [section,setSection]=useState<Section>(routeToSection())
-  const [data,setData]=useState<unknown>(null)
+  // Data is tagged with the section it belongs to, so a view never renders another section's payload.
+  const [data,setData]=useState<{section:Section,value:unknown}|null>(null)
+  const requestRef=useRef(0)
   const [catalogs,setCatalogs]=useState<Catalogs|null>(null)
   const [loading,setLoading]=useState(false)
   const [error,setError]=useState('')
@@ -69,11 +71,36 @@ export default function App(){
   const [toasts,setToasts]=useState<Toast[]>([])
   const [profileOpen,setProfileOpen]=useState(false)
 
+  const endSession=useCallback((message='')=>{
+    clearSession(window.sessionStorage)
+    window.history.replaceState({},'','/')
+    setDrawer(null)
+    setProfileOpen(false)
+    setData(null)
+    setCatalogs(null)
+    setNotice(message)
+    setSession(null)
+  },[])
+
+  // Any 401 from an authenticated request (expired/invalid token) returns to the login once.
+  useEffect(()=>{
+    if(!session)return
+    let handled=false
+    setUnauthorizedHandler(()=>{
+      if(handled)return
+      handled=true
+      endSession('Tu sesión expiró. Inicia sesión de nuevo.')
+    })
+    return()=>setUnauthorizedHandler(null)
+  },[session,endSession])
+
   const notify=useCallback((message:string,tone:Toast['tone']='success')=>{
     const id=Date.now()+Math.random()
     setToasts(current=>[...current,{id,message,tone}])
     window.setTimeout(()=>setToasts(current=>current.filter(x=>x.id!==id)),3200)
   },[])
+
+  const notifyError=useCallback((message:string)=>notify(message,'error'),[notify])
 
   const navigate=useCallback((next:Section)=>{
     const route=sections.find(x=>x[0]===next)?.[3]??'/dashboard'
@@ -91,13 +118,17 @@ export default function App(){
 
   const load=useCallback(async()=>{
     if(!session)return
+    const request=++requestRef.current
+    const target=section
     setLoading(true);setError('')
     try{
-      setData(await api(`/api/${section}`,session.token))
+      const value=await api(`/api/${target}`,session.token)
+      if(request===requestRef.current)setData({section:target,value})
     }catch(e){
+      if(request!==requestRef.current||(e instanceof ApiError&&e.status===401))return
       setError(e instanceof Error?e.message:'Error inesperado')
     }finally{
-      setLoading(false)
+      if(request===requestRef.current)setLoading(false)
     }
   },[section,session])
 
@@ -108,20 +139,21 @@ export default function App(){
     void api<Catalogs>('/api/catalogs',session.token).then(setCatalogs).catch(()=>undefined)
   },[session])
 
-  if(!session)return <Login onSession={value=>{
-    sessionStorage.setItem('gamecore_session',JSON.stringify(value))
+  if(!session)return <Login notice={notice} onSession={value=>{
+    saveSession(window.sessionStorage,value)
     window.history.replaceState({},'', '/dashboard')
     setSection('dashboard')
+    setNotice('')
+    setError('')
     setSession(value)
   }}/>
 
   const current=sections.find(x=>x[0]===section)
 
-  const logout=()=>{
-    sessionStorage.removeItem('gamecore_session')
-    window.history.replaceState({},'', '/')
-    setSession(null)
-  }
+  const logout=()=>endSession()
+  const writable=canWrite(session.role)
+
+  const closeDrawer=()=>setDrawer(null)
 
   const saveComplete=async(message:string)=>{
     setDrawer(null)
@@ -151,27 +183,18 @@ export default function App(){
         </div>
         <div className="header-actions">
           <button className="refresh-button" onClick={()=>void load()}><Icon name="refresh"/><span>Actualizar</span></button>
-          <div className="profile-wrap">
-            <button className="profile-button" onClick={()=>setProfileOpen(v=>!v)} aria-expanded={profileOpen}>
-              <span className="profile-avatar"><Icon name="user"/></span>
-              <span className="profile-copy"><strong>{session.role}</strong><small>{session.email}</small></span>
-              <Icon name="chevron"/>
-            </button>
-            {profileOpen&&<div className="profile-menu">
-              <div><strong>{session.role}</strong><small>{session.email}</small></div>
-              <button onClick={logout}>Cerrar sesión</button>
-            </div>}
-          </div>
+          <ProfileMenu session={session} open={profileOpen} onToggle={setProfileOpen} onLogout={logout}/>
         </div>
       </header>
 
       {error&&<div className="error" role="alert">{error}</div>}
-      {loading?<Skeleton/>:
+      {loading||(!error&&data?.section!==section)?<Skeleton/>:
         <View
           section={section}
-          data={data}
+          data={data?.section===section?data.value:null}
           token={session.token}
           navigate={navigate}
+          canWrite={writable}
           onCreate={()=>setDrawer({section})}
           onEdit={row=>setDrawer({section,row})}
         />
@@ -185,9 +208,9 @@ export default function App(){
       row={drawer.row}
       token={session.token}
       catalogs={catalogs}
-      onClose={()=>setDrawer(null)}
+      onClose={closeDrawer}
       onSaved={saveComplete}
-      onError={message=>notify(message,'error')}
+      onError={notifyError}
     />}
 
     <div className="toast-stack" aria-live="polite">
@@ -196,9 +219,11 @@ export default function App(){
   </div>
 }
 
-function Login({onSession}:{onSession:(session:Session)=>void}){
-  const [email,setEmail]=useState('admin@gamecore.local')
-  const [password,setPassword]=useState('GameCore123!')
+const DEMO_LOGIN=import.meta.env.DEV?{email:'admin@gamecore.local',password:'GameCore123!'}:{email:'',password:''}
+
+function Login({notice,onSession}:{notice:string,onSession:(session:Session)=>void}){
+  const [email,setEmail]=useState(DEMO_LOGIN.email)
+  const [password,setPassword]=useState(DEMO_LOGIN.password)
   const [error,setError]=useState('')
   const [busy,setBusy]=useState(false)
 
@@ -225,19 +250,20 @@ function Login({onSession}:{onSession:(session:Session)=>void}){
         <div className="login-heading"><h1>Bienvenido</h1><p>Accede a tu centro de gestión.</p></div>
         <label>Correo<input type="email" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} required/></label>
         <label>Contraseña<input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} required/></label>
+        {notice&&!error&&<div className="login-notice" role="status">{notice}</div>}
         {error&&<div className="error" role="alert">{error}</div>}
         <button type="submit" disabled={busy}><span>{busy?'Accediendo…':'Entrar a GameCore'}</span><span aria-hidden="true">→</span></button>
-        <div className="login-demo-note"><span/><small>Cuenta demo local para validación del proyecto.</small><span/></div>
+        <div className="login-demo-note"><span/><small>{import.meta.env.DEV?'Cuenta demo local para validación del proyecto.':'Acceso restringido a usuarios autorizados.'}</small><span/></div>
       </form>
       <footer className="login-footer"><span>GameCore</span><span>•</span><span>SOF-006</span><span>•</span><span>Restauración 2026</span></footer>
     </section>
   </div>
 }
 
-function View({section,data,token,navigate,onCreate,onEdit}:{section:Section,data:unknown,token:string,navigate:(s:Section)=>void,onCreate:()=>void,onEdit:(row:Row)=>void}){
+function View({section,data,token,navigate,canWrite,onCreate,onEdit}:{section:Section,data:unknown,token:string,navigate:(s:Section)=>void,canWrite:boolean,onCreate:()=>void,onEdit:(row:Row)=>void}){
   if(section==='dashboard')return <Dashboard data={data as DashboardData|null} navigate={navigate}/>
   if(section==='reports')return <Reports data={data as ReportsData|null}/>
-  return <ResourceList section={section} rows={Array.isArray(data)?data as Row[]:[]} onCreate={onCreate} onEdit={onEdit} token={token}/>
+  return <ResourceList section={section} rows={Array.isArray(data)?data as Row[]:[]} canWrite={canWrite} onCreate={onCreate} onEdit={onEdit} token={token}/>
 }
 
 function Dashboard({data,navigate}:{data:DashboardData|null,navigate:(s:Section)=>void}){
@@ -274,7 +300,7 @@ function Reports({data}:{data:ReportsData|null}){
   </div>
 }
 
-function ResourceList({section,rows,onCreate,onEdit}:{section:Section,rows:Row[],onCreate:()=>void,onEdit:(row:Row)=>void,token:string}){
+function ResourceList({section,rows,canWrite,onCreate,onEdit}:{section:Section,rows:Row[],canWrite:boolean,onCreate:()=>void,onEdit:(row:Row)=>void,token:string}){
   const [query,setQuery]=useState('')
   const [status,setStatus]=useState('all')
   const [page,setPage]=useState(1)
@@ -293,8 +319,8 @@ function ResourceList({section,rows,onCreate,onEdit}:{section:Section,rows:Row[]
 
   const pages=Math.max(Math.ceil(filtered.length/pageSize),1)
   const pageRows=filtered.slice((page-1)*pageSize,page*pageSize)
-  const canCreate=section!=='reports'
-  const canEdit=['games','customers','employees','distributions'].includes(section)
+  const canCreate=canWrite&&section!=='reports'
+  const canEdit=canWrite&&['games','customers','employees','distributions'].includes(section)
 
   return <div className="resource-stack">
     <div className="resource-toolbar">
@@ -310,7 +336,7 @@ function ResourceList({section,rows,onCreate,onEdit}:{section:Section,rows:Row[]
     </div>
 
     <div className="panel data-panel">
-      {pageRows.length?<Table rows={pageRows} actions={canEdit?row=><button className="icon-action" onClick={()=>onEdit(row)} aria-label="Editar"><Icon name="edit"/></button>:undefined}/>:<EmptyState title="Sin resultados" text="Ajusta la búsqueda o crea un nuevo registro."/>}
+      {pageRows.length?<Table rows={pageRows} actions={canEdit?row=><button className="icon-action" onClick={()=>onEdit(row)} aria-label="Editar"><Icon name="edit"/></button>:undefined}/>:<EmptyState title="Sin resultados" text={canCreate?'Ajusta la búsqueda o crea un nuevo registro.':'Ajusta la búsqueda para ver otros registros.'}/>}
     </div>
 
     <div className="pagination">
@@ -334,8 +360,9 @@ function ResourceDrawer({section,row,token,catalogs,onClose,onSaved,onError}:{se
       api<Row[]>('/api/customers',token),
       api<Row[]>('/api/employees',token),
       api<Row[]>('/api/games',token)
-    ]).then(([customers,employees,games])=>setOptions({customers,employees,games})).catch(()=>undefined)
-  },[section,token])
+    ]).then(([customers,employees,games])=>setOptions({customers,employees,games}))
+      .catch(e=>onError(e instanceof Error?e.message:'No se pudieron cargar los datos del formulario.'))
+  },[section,token,onError])
 
   async function submit(payload:unknown){
     setBusy(true)
@@ -350,7 +377,9 @@ function ResourceDrawer({section,row,token,catalogs,onClose,onSaved,onError}:{se
         const id=row?.employeeId
         await api(id?`/api/employees/${id}`:'/api/employees',token,{method:id?'PUT':'POST',body:JSON.stringify(payload)})
       }else if(section==='distributions'){
-        await api('/api/distributions',token,{method:'POST',body:JSON.stringify(payload)})
+        // Editing uses PUT by id so changing game, country or date never creates a second row.
+        const id=row?.distributionId
+        await api(id?`/api/distributions/${id}`:'/api/distributions',token,{method:id?'PUT':'POST',body:JSON.stringify(payload)})
       }else if(section==='sales'){
         await api('/api/sales',token,{method:'POST',body:JSON.stringify(payload)})
       }
@@ -359,17 +388,22 @@ function ResourceDrawer({section,row,token,catalogs,onClose,onSaved,onError}:{se
     finally{setBusy(false)}
   }
 
-  return <div className="drawer-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
-    <aside className="drawer" role="dialog" aria-modal="true" aria-label={row?'Editar registro':'Nuevo registro'}>
+  const drawerRef=useRef<HTMLElement>(null)
+  const titleId=useId()
+  const close=useCallback(()=>{if(!busy)onClose()},[busy,onClose])
+  useDialogFocus(drawerRef,close)
+
+  return <div className="drawer-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)close()}}>
+    <aside className="drawer" ref={drawerRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
       <div className="drawer-header">
-        <div><span>{row?'Editar':'Nuevo'}</span><h2>{resourceTitle(section)}</h2></div>
-        <button className="icon-action" onClick={onClose} aria-label="Cerrar"><Icon name="close"/></button>
+        <div><span>{row?'Editar':'Nuevo'}</span><h2 id={titleId}>{resourceTitle(section)}</h2></div>
+        <button className="icon-action" onClick={close} disabled={busy} aria-label="Cerrar panel"><Icon name="close"/></button>
       </div>
       <div className="drawer-body">
         {section==='games'&&<GameForm row={row} catalogs={catalogs} busy={busy} onSubmit={submit}/>}
         {section==='customers'&&<CustomerForm row={row} busy={busy} onSubmit={submit}/>}
         {section==='employees'&&<EmployeeForm row={row} catalogs={catalogs} busy={busy} onSubmit={submit}/>}
-        {section==='distributions'&&<DistributionForm row={row} catalogs={catalogs} games={options.games} token={token} busy={busy} onSubmit={submit}/>}
+        {section==='distributions'&&<DistributionForm row={row} catalogs={catalogs} games={options.games} token={token} busy={busy} onSubmit={submit} onError={onError}/>}
         {section==='sales'&&<SaleForm options={options} busy={busy} onSubmit={submit}/>}
       </div>
     </aside>
@@ -439,9 +473,14 @@ function EmployeeForm({row,catalogs,busy,onSubmit}:{row?:Row,catalogs:Catalogs|n
   </form>
 }
 
-function DistributionForm({row,catalogs,games,token,busy,onSubmit}:{row?:Row,catalogs:Catalogs|null,games:Row[],token:string,busy:boolean,onSubmit:(p:unknown)=>void}){
+function DistributionForm({row,catalogs,games,token,busy,onSubmit,onError}:{row?:Row,catalogs:Catalogs|null,games:Row[],token:string,busy:boolean,onSubmit:(p:unknown)=>void,onError:(message:string)=>void}){
   const [gameOptions,setGameOptions]=useState<Row[]>(games)
-  useEffect(()=>{if(gameOptions.length===0)void api<Row[]>('/api/games',token).then(setGameOptions)},[gameOptions.length,token])
+  const [gamesRequested,setGamesRequested]=useState(games.length>0)
+  useEffect(()=>{
+    if(gamesRequested)return
+    setGamesRequested(true)
+    void api<Row[]>('/api/games',token).then(setGameOptions).catch(e=>onError(e instanceof Error?e.message:'No se pudo cargar el catálogo de videojuegos.'))
+  },[gamesRequested,token,onError])
   const [gameId,setGameId]=useState(Number(row?.gameId??0))
   const [countryId,setCountryId]=useState(Number(row?.countryId??0))
   const [distributionDate,setDistributionDate]=useState(String(row?.distributionDate??new Date().toISOString()).slice(0,10))
@@ -476,6 +515,74 @@ function SaleForm({options,busy,onSubmit}:{options:{customers:Row[],employees:Ro
     </fieldset>
     <Submit busy={busy} editing={false}/>
   </form>
+}
+
+const FOCUSABLE='a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+
+/** Modal focus management: initial focus, Tab trapping, Escape to close and focus restoration. */
+function useDialogFocus(ref:RefObject<HTMLElement|null>,onClose:()=>void){
+  const closeRef=useRef(onClose)
+  useEffect(()=>{closeRef.current=onClose},[onClose])
+
+  useEffect(()=>{
+    const dialog=ref.current
+    if(!dialog)return
+    const opener=document.activeElement instanceof HTMLElement?document.activeElement:null
+    const focusables=()=>Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(el=>el.getClientRects().length>0)
+    const firstField=dialog.querySelector<HTMLElement>('.drawer-body input:not([disabled]),.drawer-body select:not([disabled]),.drawer-body textarea:not([disabled])')
+    ;(firstField??focusables()[0]??dialog).focus()
+
+    const onKeyDown=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'){
+        event.preventDefault()
+        closeRef.current()
+        return
+      }
+      if(event.key!=='Tab')return
+      const items=focusables()
+      if(!items.length){event.preventDefault();dialog.focus();return}
+      const first=items[0]
+      const last=items[items.length-1]
+      const active=document.activeElement
+      if(event.shiftKey&&(active===first||active===dialog||!dialog.contains(active))){event.preventDefault();last.focus()}
+      else if(!event.shiftKey&&(active===last||!dialog.contains(active))){event.preventDefault();first.focus()}
+    }
+    document.addEventListener('keydown',onKeyDown)
+    return()=>{
+      document.removeEventListener('keydown',onKeyDown)
+      if(opener&&opener.isConnected)opener.focus()
+    }
+  },[ref])
+}
+
+function ProfileMenu({session,open,onToggle,onLogout}:{session:Session,open:boolean,onToggle:(open:boolean)=>void,onLogout:()=>void}){
+  const wrapRef=useRef<HTMLDivElement>(null)
+  const buttonRef=useRef<HTMLButtonElement>(null)
+  const menuId=useId()
+
+  useEffect(()=>{
+    if(!open)return
+    const onPointerDown=(event:PointerEvent)=>{if(wrapRef.current&&!wrapRef.current.contains(event.target as Node))onToggle(false)}
+    const onKeyDown=(event:KeyboardEvent)=>{if(event.key==='Escape'){onToggle(false);buttonRef.current?.focus()}}
+    document.addEventListener('pointerdown',onPointerDown)
+    document.addEventListener('keydown',onKeyDown)
+    return()=>{
+      document.removeEventListener('pointerdown',onPointerDown)
+      document.removeEventListener('keydown',onKeyDown)
+    }
+  },[open,onToggle])
+
+  return <div className="profile-wrap" ref={wrapRef}>
+    <button ref={buttonRef} className="profile-button" onClick={()=>onToggle(!open)} aria-expanded={open} aria-haspopup="true" aria-controls={open?menuId:undefined} aria-label={`Perfil de ${session.email}`}>
+      <span className="profile-avatar"><Icon name="user"/></span>
+      <span className="profile-copy"><strong>{session.role}</strong><small>{session.email}</small></span>
+      <Icon name="chevron"/>
+    </button>
+    {open&&<div className="profile-menu" id={menuId}>
+      <div><strong>{session.role}</strong><small>{session.email}</small></div>
+      <button onClick={onLogout}>Cerrar sesión</button>
+    </div>}
+  </div>
 }
 
 function Field({label,children}:{label:string,children:ReactNode}){return <label className="field"><span>{label}</span>{children}</label>}
@@ -529,7 +636,13 @@ function formatCell(key:string,value:unknown){
   return String(value)
 }
 function formatMoney(value:number){return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(Number(value))}
-function formatDate(value:string){const d=new Date(value);return Number.isNaN(d.getTime())?repairText(value):new Intl.DateTimeFormat('es-DO',{day:'2-digit',month:'2-digit',year:'numeric'}).format(d)}
+function formatDate(value:string){
+  // Date-only values (DateOnly) must not be shifted by the browser time zone.
+  const dateOnly=/^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if(dateOnly)return `${dateOnly[3]}/${dateOnly[2]}/${dateOnly[1]}`
+  const d=new Date(value)
+  return Number.isNaN(d.getTime())?repairText(value):new Intl.DateTimeFormat('es-DO',{day:'2-digit',month:'2-digit',year:'numeric'}).format(d)
+}
 function repairText(value:string){if(!/[ÃÂ]/.test(value))return value;try{const bytes=Uint8Array.from(Array.from(value).map(char=>char.charCodeAt(0)&255));return new TextDecoder('utf-8').decode(bytes)}catch{return value}}
 function humanize(key:string){return key.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/^./,m=>m.toUpperCase())}
 function createLabel(section:Section){return section==='games'?'Nuevo videojuego':section==='customers'?'Nuevo cliente':section==='sales'?'Nueva venta':section==='employees'?'Nuevo empleado':section==='distributions'?'Nueva distribución':'Nuevo'}

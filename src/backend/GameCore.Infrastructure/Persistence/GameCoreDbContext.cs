@@ -76,7 +76,9 @@ public sealed class GameCoreDbContext(DbContextOptions<GameCoreDbContext> option
             entity.Property(x => x.CreatedAt)
                 .HasDefaultValueSql("SYSUTCDATETIME()")
                 .ValueGeneratedOnAdd();
-            entity.HasIndex(x => x.Email).IsUnique();
+            entity.HasIndex(x => x.Email, "UX_Employees_Email")
+                .IsUnique()
+                .HasFilter("[Email] IS NOT NULL");
 
             entity.HasOne(x => x.Branch)
                 .WithMany(x => x.Employees)
@@ -100,7 +102,9 @@ public sealed class GameCoreDbContext(DbContextOptions<GameCoreDbContext> option
             entity.Property(x => x.CreatedAt)
                 .HasDefaultValueSql("SYSUTCDATETIME()")
                 .ValueGeneratedOnAdd();
-            entity.HasIndex(x => x.Email).IsUnique();
+            entity.HasIndex(x => x.Email, "UX_Customers_Email")
+                .IsUnique()
+                .HasFilter("[Email] IS NOT NULL");
         });
 
         modelBuilder.Entity<AgeRating>(entity =>

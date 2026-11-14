@@ -61,7 +61,6 @@ CREATE TABLE dbo.Employees (
     CreatedAt       datetime2(0) NOT NULL CONSTRAINT DF_Employees_CreatedAt DEFAULT SYSUTCDATETIME(),
     CONSTRAINT FK_Employees_Branches FOREIGN KEY (BranchId) REFERENCES dbo.Branches(BranchId),
     CONSTRAINT FK_Employees_JobPositions FOREIGN KEY (JobPositionId) REFERENCES dbo.JobPositions(JobPositionId),
-    CONSTRAINT UQ_Employees_Email UNIQUE (Email),
     CONSTRAINT CK_Employees_FirstName_NotBlank CHECK (LEN(LTRIM(RTRIM(FirstName))) > 0),
     CONSTRAINT CK_Employees_LastName_NotBlank CHECK (LEN(LTRIM(RTRIM(LastName))) > 0)
 );
@@ -74,7 +73,6 @@ CREATE TABLE dbo.Customers (
     Phone           varchar(20) NULL,
     Email           varchar(150) NULL,
     CreatedAt       datetime2(0) NOT NULL CONSTRAINT DF_Customers_CreatedAt DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT UQ_Customers_Email UNIQUE (Email),
     CONSTRAINT CK_Customers_FirstName_NotBlank CHECK (LEN(LTRIM(RTRIM(FirstName))) > 0),
     CONSTRAINT CK_Customers_LastName_NotBlank CHECK (LEN(LTRIM(RTRIM(LastName))) > 0)
 );
@@ -221,4 +219,14 @@ CREATE INDEX IX_Sales_EmployeeId_SaleDate
 
 CREATE INDEX IX_SaleDetails_GameId
     ON dbo.SaleDetails(GameId);
+
+-- Email is optional for customers and employees. A plain UNIQUE constraint would
+-- allow only one NULL row, so uniqueness is enforced only for non-NULL values.
+CREATE UNIQUE INDEX UX_Customers_Email
+    ON dbo.Customers(Email)
+    WHERE Email IS NOT NULL;
+
+CREATE UNIQUE INDEX UX_Employees_Email
+    ON dbo.Employees(Email)
+    WHERE Email IS NOT NULL;
 GO

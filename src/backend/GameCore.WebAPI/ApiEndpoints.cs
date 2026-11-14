@@ -1,9 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 using GameCore.Domain.Entities;
 using GameCore.Infrastructure.Persistence;
+using GameCore.WebAPI.Errors;
+using GameCore.WebAPI.Security;
+using GameCore.WebAPI.Validation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -11,42 +13,60 @@ namespace GameCore.WebAPI;
 
 public static class ApiEndpoints
 {
+    private static readonly TimeSpan TokenLifetime = TimeSpan.FromHours(8);
+
     public static IEndpointRouteBuilder MapGameCoreApi(this IEndpointRouteBuilder endpoints)
     {
         var api = endpoints.MapGroup("/api");
-        api.MapPost("/auth/login", LoginAsync);
+        api.MapPost("/auth/login", LoginAsync).AllowAnonymous();
 
-        var secured = api.MapGroup(string.Empty).RequireAuthorization();
-        secured.MapGet("/games", GetGamesAsync);
-        secured.MapPost("/games", CreateGameAsync);
-        secured.MapPut("/games/{id:int}", UpdateGameAsync);
-        secured.MapDelete("/games/{id:int}", DeactivateGameAsync);
-        secured.MapGet("/customers", GetCustomersAsync);
-        secured.MapPost("/customers", CreateCustomerAsync);
-        secured.MapPut("/customers/{id:int}", UpdateCustomerAsync);
-        secured.MapGet("/sales", GetSalesAsync);
-        secured.MapPost("/sales", CreateSaleAsync);
-        secured.MapGet("/employees", GetEmployeesAsync);
-        secured.MapPost("/employees", CreateEmployeeAsync);
-        secured.MapPut("/employees/{id:int}", UpdateEmployeeAsync);
-        secured.MapGet("/distributions", GetDistributionsAsync);
-        secured.MapPost("/distributions", UpsertDistributionAsync);
-        secured.MapGet("/catalogs", GetCatalogsAsync);
-        secured.MapGet("/dashboard", GetDashboardAsync);
-        secured.MapGet("/reports", GetReportsAsync);
+        // Every /api resource requires an authenticated GameCore role.
+        // Viewer: GET only. Manager and Admin: GET + create/update/deactivate.
+        var read = api.MapGroup(string.Empty).RequireAuthorization(Policies.Read);
+        var write = api.MapGroup(string.Empty).RequireAuthorization(Policies.Read, Policies.Write);
+
+        read.MapGet("/games", GetGamesAsync);
+        write.MapPost("/games", CreateGameAsync);
+        write.MapPut("/games/{id:int}", UpdateGameAsync);
+        write.MapDelete("/games/{id:int}", DeactivateGameAsync);
+
+        read.MapGet("/customers", GetCustomersAsync);
+        write.MapPost("/customers", CreateCustomerAsync);
+        write.MapPut("/customers/{id:int}", UpdateCustomerAsync);
+
+        read.MapGet("/sales", GetSalesAsync);
+        write.MapPost("/sales", CreateSaleAsync);
+
+        read.MapGet("/employees", GetEmployeesAsync);
+        write.MapPost("/employees", CreateEmployeeAsync);
+        write.MapPut("/employees/{id:int}", UpdateEmployeeAsync);
+
+        read.MapGet("/distributions", GetDistributionsAsync);
+        write.MapPost("/distributions", UpsertDistributionAsync);
+        write.MapPut("/distributions/{id:long}", UpdateDistributionAsync);
+
+        read.MapGet("/catalogs", GetCatalogsAsync);
+        read.MapGet("/dashboard", GetDashboardAsync);
+        read.MapGet("/reports", GetReportsAsync);
         return endpoints;
     }
 
+    // ---------------------------------------------------------------- auth
+
     private static async Task<IResult> LoginAsync(LoginRequest request, GameCoreDbContext db, IConfiguration configuration)
     {
-        var email = request.Email.Trim().ToLowerInvariant();
+        var errors = RequestValidator.ValidateLogin(request);
+        if (errors.Count > 0) return ApiProblems.Validation(errors);
+
+        var email = RequestValidator.NormalizeEmail(request.Email)!;
         var user = await db.AppUsers.AsNoTracking().SingleOrDefaultAsync(x => x.Email == email && x.IsActive);
-        if (user is null || !VerifyPassword(request.Password, user.PasswordHash))
+        if (user is null || !PasswordHasher.Verify(request.Password, user.PasswordHash))
             return Results.Unauthorized();
 
         var key = configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is missing.");
         var issuer = configuration["Jwt:Issuer"] ?? "GameCore";
         var audience = configuration["Jwt:Audience"] ?? "GameCore.Client";
+        var expiresAt = DateTime.UtcNow.Add(TokenLifetime);
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
@@ -58,13 +78,15 @@ public static class ApiEndpoints
             issuer,
             audience,
             claims,
-            expires: DateTime.UtcNow.AddHours(8),
+            expires: expiresAt,
             signingCredentials: new SigningCredentials(
                 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
                 SecurityAlgorithms.HmacSha256));
 
-        return Results.Ok(new LoginResponse(new JwtSecurityTokenHandler().WriteToken(token), user.Email, user.Role));
+        return Results.Ok(new LoginResponse(new JwtSecurityTokenHandler().WriteToken(token), user.Email, user.Role, expiresAt));
     }
+
+    // --------------------------------------------------------------- games
 
     private static async Task<IResult> GetGamesAsync(GameCoreDbContext db)
     {
@@ -85,76 +107,124 @@ public static class ApiEndpoints
         return Results.Ok(rows);
     }
 
+    /// <summary>
+    /// Creates the game and its genre/platform relations in a single SaveChanges call,
+    /// which EF Core executes inside one database transaction: either everything is
+    /// stored or nothing is. <c>IsActive</c> is honoured (defaults to true when omitted).
+    /// </summary>
     private static async Task<IResult> CreateGameAsync(GameWriteRequest request, GameCoreDbContext db)
     {
-        if (string.IsNullOrWhiteSpace(request.Title) || request.UnitPrice < 0)
-            return Results.BadRequest(new { error = "Title is required and unitPrice must be non-negative." });
+        var errors = RequestValidator.ValidateGame(request);
+        if (errors.Count > 0) return ApiProblems.Validation(errors);
+
+        var title = RequestValidator.Normalize(request.Title)!;
+        var problem = await CheckGameReferencesAsync(db, request, title, gameId: null);
+        if (problem is not null) return problem;
 
         var game = new Game
         {
-            Title = request.Title.Trim(),
-            Story = request.Story?.Trim(),
+            Title = title,
+            Story = RequestValidator.Normalize(request.Story),
             ReleaseDate = request.ReleaseDate,
             UnitPrice = request.UnitPrice,
             AgeRatingId = request.AgeRatingId,
-            IsActive = true
+            IsActive = request.IsActive
         };
+        foreach (var genreId in request.GenreIds ?? []) game.GameGenres.Add(new GameGenre { GenreId = genreId });
+        foreach (var platformId in request.PlatformIds ?? []) game.GamePlatforms.Add(new GamePlatform { PlatformId = platformId });
+
         db.Games.Add(game);
         await db.SaveChangesAsync();
-        await ReplaceGameRelationsAsync(db, game.GameId, request.GenreIds, request.PlatformIds);
         return Results.Created($"/api/games/{game.GameId}", new { game.GameId });
     }
 
+    /// <summary>
+    /// Updates the game and synchronises its relations (only the differences are
+    /// deleted/inserted) in a single, atomic SaveChanges call.
+    /// </summary>
     private static async Task<IResult> UpdateGameAsync(int id, GameWriteRequest request, GameCoreDbContext db)
     {
-        var game = await db.Games.SingleOrDefaultAsync(x => x.GameId == id);
-        if (game is null) return Results.NotFound();
-        if (string.IsNullOrWhiteSpace(request.Title) || request.UnitPrice < 0)
-            return Results.BadRequest(new { error = "Invalid game data." });
+        var errors = RequestValidator.ValidateGame(request);
+        if (errors.Count > 0) return ApiProblems.Validation(errors);
 
-        game.Title = request.Title.Trim();
-        game.Story = request.Story?.Trim();
+        var game = await db.Games
+            .Include(x => x.GameGenres)
+            .Include(x => x.GamePlatforms)
+            .SingleOrDefaultAsync(x => x.GameId == id);
+        if (game is null) return ApiProblems.NotFound("El videojuego no existe.");
+
+        var title = RequestValidator.Normalize(request.Title)!;
+        var problem = await CheckGameReferencesAsync(db, request, title, id);
+        if (problem is not null) return problem;
+
+        game.Title = title;
+        game.Story = RequestValidator.Normalize(request.Story);
         game.ReleaseDate = request.ReleaseDate;
         game.UnitPrice = request.UnitPrice;
         game.AgeRatingId = request.AgeRatingId;
         game.IsActive = request.IsActive;
+
+        var genreIds = (request.GenreIds ?? []).ToHashSet();
+        foreach (var relation in game.GameGenres.Where(x => !genreIds.Contains(x.GenreId)).ToList()) db.GameGenres.Remove(relation);
+        foreach (var genreId in genreIds.Where(x => game.GameGenres.All(g => g.GenreId != x)).ToList()) game.GameGenres.Add(new GameGenre { GameId = id, GenreId = genreId });
+
+        var platformIds = (request.PlatformIds ?? []).ToHashSet();
+        foreach (var relation in game.GamePlatforms.Where(x => !platformIds.Contains(x.PlatformId)).ToList()) db.GamePlatforms.Remove(relation);
+        foreach (var platformId in platformIds.Where(x => game.GamePlatforms.All(p => p.PlatformId != x)).ToList()) game.GamePlatforms.Add(new GamePlatform { GameId = id, PlatformId = platformId });
+
         await db.SaveChangesAsync();
-        await ReplaceGameRelationsAsync(db, id, request.GenreIds, request.PlatformIds);
         return Results.NoContent();
     }
 
-    private static async Task ReplaceGameRelationsAsync(GameCoreDbContext db, int gameId, int[] genreIds, int[] platformIds)
+    private static async Task<IResult?> CheckGameReferencesAsync(GameCoreDbContext db, GameWriteRequest request, string title, int? gameId)
     {
-        await db.GameGenres.Where(x => x.GameId == gameId).ExecuteDeleteAsync();
-        await db.GamePlatforms.Where(x => x.GameId == gameId).ExecuteDeleteAsync();
-        db.GameGenres.AddRange(genreIds.Distinct().Select(id => new GameGenre { GameId = gameId, GenreId = id }));
-        db.GamePlatforms.AddRange(platformIds.Distinct().Select(id => new GamePlatform { GameId = gameId, PlatformId = id }));
-        await db.SaveChangesAsync();
+        if (request.AgeRatingId is { } ratingId && !await db.AgeRatings.AnyAsync(x => x.AgeRatingId == ratingId))
+            return ApiProblems.Validation("ageRatingId", "La clasificación indicada no existe.");
+
+        var genreIds = request.GenreIds ?? [];
+        if (genreIds.Length > 0 && await db.Genres.CountAsync(x => genreIds.Contains(x.GenreId)) != genreIds.Length)
+            return ApiProblems.Validation("genreIds", "Uno o más géneros no existen.");
+
+        var platformIds = request.PlatformIds ?? [];
+        if (platformIds.Length > 0 && await db.Platforms.CountAsync(x => platformIds.Contains(x.PlatformId)) != platformIds.Length)
+            return ApiProblems.Validation("platformIds", "Una o más plataformas no existen.");
+
+        var excludedId = gameId ?? 0;
+        if (await db.Games.AnyAsync(x => x.Title == title && x.ReleaseDate == request.ReleaseDate && x.GameId != excludedId))
+            return ApiProblems.Conflict("Ya existe un videojuego con ese título y fecha de lanzamiento.");
+
+        return null;
     }
 
     private static async Task<IResult> DeactivateGameAsync(int id, GameCoreDbContext db)
     {
         var game = await db.Games.SingleOrDefaultAsync(x => x.GameId == id);
-        if (game is null) return Results.NotFound();
+        if (game is null) return ApiProblems.NotFound("El videojuego no existe.");
         game.IsActive = false;
         await db.SaveChangesAsync();
         return Results.NoContent();
     }
+
+    // ----------------------------------------------------------- customers
 
     private static async Task<IResult> GetCustomersAsync(GameCoreDbContext db) =>
         Results.Ok(await db.Customers.AsNoTracking().OrderBy(x => x.FirstName).ThenBy(x => x.LastName).ToListAsync());
 
     private static async Task<IResult> CreateCustomerAsync(CustomerWriteRequest request, GameCoreDbContext db)
     {
-        if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName))
-            return Results.BadRequest(new { error = "First and last name are required." });
+        var errors = RequestValidator.ValidateCustomer(request);
+        if (errors.Count > 0) return ApiProblems.Validation(errors);
+
+        var email = RequestValidator.NormalizeEmail(request.Email);
+        if (email is not null && await db.Customers.AnyAsync(x => x.Email == email))
+            return ApiProblems.Conflict("Ya existe un cliente con ese correo.");
 
         var customer = new Customer
         {
-            FirstName = request.FirstName.Trim(),
-            LastName = request.LastName.Trim(),
-            Phone = request.Phone?.Trim(),
-            Email = request.Email?.Trim().ToLowerInvariant()
+            FirstName = RequestValidator.Normalize(request.FirstName)!,
+            LastName = RequestValidator.Normalize(request.LastName)!,
+            Phone = RequestValidator.Normalize(request.Phone),
+            Email = email
         };
         db.Customers.Add(customer);
         await db.SaveChangesAsync();
@@ -163,15 +233,25 @@ public static class ApiEndpoints
 
     private static async Task<IResult> UpdateCustomerAsync(int id, CustomerWriteRequest request, GameCoreDbContext db)
     {
+        var errors = RequestValidator.ValidateCustomer(request);
+        if (errors.Count > 0) return ApiProblems.Validation(errors);
+
         var customer = await db.Customers.SingleOrDefaultAsync(x => x.CustomerId == id);
-        if (customer is null) return Results.NotFound();
-        customer.FirstName = request.FirstName.Trim();
-        customer.LastName = request.LastName.Trim();
-        customer.Phone = request.Phone?.Trim();
-        customer.Email = request.Email?.Trim().ToLowerInvariant();
+        if (customer is null) return ApiProblems.NotFound("El cliente no existe.");
+
+        var email = RequestValidator.NormalizeEmail(request.Email);
+        if (email is not null && await db.Customers.AnyAsync(x => x.Email == email && x.CustomerId != id))
+            return ApiProblems.Conflict("Ya existe otro cliente con ese correo.");
+
+        customer.FirstName = RequestValidator.Normalize(request.FirstName)!;
+        customer.LastName = RequestValidator.Normalize(request.LastName)!;
+        customer.Phone = RequestValidator.Normalize(request.Phone);
+        customer.Email = email;
         await db.SaveChangesAsync();
         return Results.NoContent();
     }
+
+    // --------------------------------------------------------------- sales
 
     private static async Task<IResult> GetSalesAsync(GameCoreDbContext db)
     {
@@ -190,40 +270,50 @@ public static class ApiEndpoints
         return Results.Ok(rows);
     }
 
+    /// <summary>
+    /// Validates the whole payload before writing (customer, active employee, active games,
+    /// no repeated GameId) and stores Sale + SaleDetails atomically. The historical price is
+    /// the game's UnitPrice at the moment of the sale.
+    /// </summary>
     private static async Task<IResult> CreateSaleAsync(SaleCreateRequest request, GameCoreDbContext db)
     {
-        if (request.Items.Length == 0 || request.Items.Any(x => x.Quantity <= 0))
-            return Results.BadRequest(new { error = "At least one valid sale item is required." });
+        var errors = RequestValidator.ValidateSale(request);
+        if (errors.Count > 0) return ApiProblems.Validation(errors);
 
         if (!await db.Customers.AnyAsync(x => x.CustomerId == request.CustomerId))
-            return Results.BadRequest(new { error = "Customer does not exist." });
+            return ApiProblems.Validation("customerId", "El cliente no existe.");
 
-        if (request.EmployeeId is not null && !await db.Employees.AnyAsync(x => x.EmployeeId == request.EmployeeId && x.IsActive))
-            return Results.BadRequest(new { error = "Employee does not exist or is inactive." });
+        if (request.EmployeeId is { } employeeId && !await db.Employees.AnyAsync(x => x.EmployeeId == employeeId && x.IsActive))
+            return ApiProblems.Validation("employeeId", "El empleado no existe o está inactivo.");
 
-        var ids = request.Items.Select(x => x.GameId).Distinct().ToArray();
-        var games = await db.Games.Where(x => ids.Contains(x.GameId) && x.IsActive).ToDictionaryAsync(x => x.GameId);
-        if (games.Count != ids.Length)
-            return Results.BadRequest(new { error = "One or more games do not exist or are inactive." });
+        var ids = request.Items.Select(x => x.GameId).ToArray();
+        var prices = await db.Games.AsNoTracking()
+            .Where(x => ids.Contains(x.GameId) && x.IsActive)
+            .ToDictionaryAsync(x => x.GameId, x => x.UnitPrice);
+        if (prices.Count != ids.Length)
+            return ApiProblems.Validation("items", "Uno o más videojuegos no existen o están inactivos.");
 
-        await using var tx = await db.Database.BeginTransactionAsync();
-        var sale = new Sale { CustomerId = request.CustomerId, EmployeeId = request.EmployeeId, Status = "Completed" };
-        db.Sales.Add(sale);
-        await db.SaveChangesAsync();
-
-        foreach (var item in request.Items)
+        // EnableRetryOnFailure requires user transactions to run inside the execution strategy.
+        var strategy = db.Database.CreateExecutionStrategy();
+        var saleId = await strategy.ExecuteAsync(async () =>
         {
-            var game = games[item.GameId];
-            db.SaleDetails.Add(new SaleDetail
-            {
-                SaleId = sale.SaleId, GameId = game.GameId, Quantity = item.Quantity, UnitPrice = game.UnitPrice
-            });
-        }
+            db.ChangeTracker.Clear();
+            await using var transaction = await db.Database.BeginTransactionAsync();
 
-        await db.SaveChangesAsync();
-        await tx.CommitAsync();
-        return Results.Created($"/api/sales/{sale.SaleId}", new { sale.SaleId });
+            var sale = new Sale { CustomerId = request.CustomerId, EmployeeId = request.EmployeeId, Status = "Completed" };
+            foreach (var item in request.Items)
+                sale.SaleDetails.Add(new SaleDetail { GameId = item.GameId, Quantity = item.Quantity, UnitPrice = prices[item.GameId] });
+
+            db.Sales.Add(sale);
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return sale.SaleId;
+        });
+
+        return Results.Created($"/api/sales/{saleId}", new { SaleId = saleId });
     }
+
+    // ----------------------------------------------------------- employees
 
     private static async Task<IResult> GetEmployeesAsync(GameCoreDbContext db) =>
         Results.Ok(await db.Employees.AsNoTracking()
@@ -237,21 +327,11 @@ public static class ApiEndpoints
 
     private static async Task<IResult> CreateEmployeeAsync(EmployeeWriteRequest request, GameCoreDbContext db)
     {
-        if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName))
-            return Results.BadRequest(new { error = "First and last name are required." });
+        var problem = await ValidateEmployeeAsync(request, db, employeeId: null);
+        if (problem is not null) return problem;
 
-        var employee = new Employee
-        {
-            BranchId = request.BranchId,
-            JobPositionId = request.JobPositionId,
-            FirstName = request.FirstName.Trim(),
-            LastName = request.LastName.Trim(),
-            Phone = request.Phone?.Trim(),
-            Email = request.Email?.Trim().ToLowerInvariant(),
-            AddressLine = request.AddressLine?.Trim(),
-            IsActive = request.IsActive
-        };
-
+        var employee = new Employee();
+        ApplyEmployee(employee, request);
         db.Employees.Add(employee);
         await db.SaveChangesAsync();
         return Results.Created($"/api/employees/{employee.EmployeeId}", new { employee.EmployeeId });
@@ -259,24 +339,51 @@ public static class ApiEndpoints
 
     private static async Task<IResult> UpdateEmployeeAsync(int id, EmployeeWriteRequest request, GameCoreDbContext db)
     {
+        var errors = RequestValidator.ValidateEmployee(request);
+        if (errors.Count > 0) return ApiProblems.Validation(errors);
+
         var employee = await db.Employees.SingleOrDefaultAsync(x => x.EmployeeId == id);
-        if (employee is null) return Results.NotFound();
+        if (employee is null) return ApiProblems.NotFound("El empleado no existe.");
 
-        if (string.IsNullOrWhiteSpace(request.FirstName) || string.IsNullOrWhiteSpace(request.LastName))
-            return Results.BadRequest(new { error = "First and last name are required." });
+        var problem = await ValidateEmployeeAsync(request, db, id);
+        if (problem is not null) return problem;
 
-        employee.BranchId = request.BranchId;
-        employee.JobPositionId = request.JobPositionId;
-        employee.FirstName = request.FirstName.Trim();
-        employee.LastName = request.LastName.Trim();
-        employee.Phone = request.Phone?.Trim();
-        employee.Email = request.Email?.Trim().ToLowerInvariant();
-        employee.AddressLine = request.AddressLine?.Trim();
-        employee.IsActive = request.IsActive;
-
+        ApplyEmployee(employee, request);
         await db.SaveChangesAsync();
         return Results.NoContent();
     }
+
+    private static async Task<IResult?> ValidateEmployeeAsync(EmployeeWriteRequest request, GameCoreDbContext db, int? employeeId)
+    {
+        var errors = RequestValidator.ValidateEmployee(request);
+        if (errors.Count > 0) return ApiProblems.Validation(errors);
+
+        if (!await db.Branches.AnyAsync(x => x.BranchId == request.BranchId))
+            return ApiProblems.Validation("branchId", "La sucursal no existe.");
+        if (!await db.JobPositions.AnyAsync(x => x.JobPositionId == request.JobPositionId))
+            return ApiProblems.Validation("jobPositionId", "El puesto no existe.");
+
+        var email = RequestValidator.NormalizeEmail(request.Email);
+        var excludedId = employeeId ?? 0;
+        if (email is not null && await db.Employees.AnyAsync(x => x.Email == email && x.EmployeeId != excludedId))
+            return ApiProblems.Conflict("Ya existe un empleado con ese correo.");
+
+        return null;
+    }
+
+    private static void ApplyEmployee(Employee employee, EmployeeWriteRequest request)
+    {
+        employee.BranchId = request.BranchId;
+        employee.JobPositionId = request.JobPositionId;
+        employee.FirstName = RequestValidator.Normalize(request.FirstName)!;
+        employee.LastName = RequestValidator.Normalize(request.LastName)!;
+        employee.Phone = RequestValidator.Normalize(request.Phone);
+        employee.Email = RequestValidator.NormalizeEmail(request.Email);
+        employee.AddressLine = RequestValidator.Normalize(request.AddressLine);
+        employee.IsActive = request.IsActive;
+    }
+
+    // ------------------------------------------------------- distributions
 
     private static async Task<IResult> GetDistributionsAsync(GameCoreDbContext db) =>
         Results.Ok(await db.Distributions.AsNoTracking()
@@ -288,24 +395,74 @@ public static class ApiEndpoints
                 Country = x.Country.Name, x.DistributionDate, x.Units
             }).ToListAsync());
 
+    /// <summary>
+    /// POST keeps the documented upsert semantics of dbo.usp_RecordDistribution:
+    /// a new Game + Country + Date creates a row (201); an existing one updates its units (200).
+    /// Editing an existing row by id must use PUT /api/distributions/{id}.
+    /// </summary>
     private static async Task<IResult> UpsertDistributionAsync(DistributionWriteRequest request, GameCoreDbContext db)
     {
-        if (request.Units < 0) return Results.BadRequest(new { error = "Units cannot be negative." });
+        var problem = await ValidateDistributionAsync(request, db);
+        if (problem is not null) return problem;
+
         var row = await db.Distributions.SingleOrDefaultAsync(x =>
             x.GameId == request.GameId && x.CountryId == request.CountryId && x.DistributionDate == request.DistributionDate);
-        if (row is null)
+        if (row is not null)
         {
-            row = new Distribution
-            {
-                GameId = request.GameId, CountryId = request.CountryId,
-                DistributionDate = request.DistributionDate, Units = request.Units
-            };
-            db.Distributions.Add(row);
+            row.Units = request.Units;
+            await db.SaveChangesAsync();
+            return Results.Ok(new { row.DistributionId, Created = false });
         }
-        else row.Units = request.Units;
+
+        row = new Distribution
+        {
+            GameId = request.GameId, CountryId = request.CountryId,
+            DistributionDate = request.DistributionDate, Units = request.Units
+        };
+        db.Distributions.Add(row);
         await db.SaveChangesAsync();
-        return Results.Ok(new { row.DistributionId });
+        return Results.Created($"/api/distributions/{row.DistributionId}", new { row.DistributionId, Created = true });
     }
+
+    /// <summary>
+    /// Updates an existing distribution in place (including its Game, Country or Date).
+    /// Moving it onto a Game + Country + Date already used by another row returns 409.
+    /// </summary>
+    private static async Task<IResult> UpdateDistributionAsync(long id, DistributionWriteRequest request, GameCoreDbContext db)
+    {
+        var errors = RequestValidator.ValidateDistribution(request);
+        if (errors.Count > 0) return ApiProblems.Validation(errors);
+
+        var row = await db.Distributions.SingleOrDefaultAsync(x => x.DistributionId == id);
+        if (row is null) return ApiProblems.NotFound("La distribución no existe.");
+
+        var problem = await ValidateDistributionAsync(request, db);
+        if (problem is not null) return problem;
+
+        if (await db.Distributions.AnyAsync(x => x.DistributionId != id && x.GameId == request.GameId
+                && x.CountryId == request.CountryId && x.DistributionDate == request.DistributionDate))
+            return ApiProblems.Conflict("Ya existe otra distribución para ese videojuego, país y fecha.");
+
+        row.GameId = request.GameId;
+        row.CountryId = request.CountryId;
+        row.DistributionDate = request.DistributionDate;
+        row.Units = request.Units;
+        await db.SaveChangesAsync();
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult?> ValidateDistributionAsync(DistributionWriteRequest request, GameCoreDbContext db)
+    {
+        var errors = RequestValidator.ValidateDistribution(request);
+        if (errors.Count > 0) return ApiProblems.Validation(errors);
+        if (!await db.Games.AnyAsync(x => x.GameId == request.GameId))
+            return ApiProblems.Validation("gameId", "El videojuego no existe.");
+        if (!await db.Countries.AnyAsync(x => x.CountryId == request.CountryId))
+            return ApiProblems.Validation("countryId", "El país no existe.");
+        return null;
+    }
+
+    // ----------------------------------------------------- catalogs / KPIs
 
     private static async Task<IResult> GetCatalogsAsync(GameCoreDbContext db) =>
         Results.Ok(new
@@ -465,21 +622,11 @@ public static class ApiEndpoints
 
         return Results.Ok(new { monthlySales, topGames, customers, countries });
     }
-
-    private static bool VerifyPassword(string password, string encoded)
-    {
-        var parts = encoded.Split('.');
-        if (parts.Length != 3 || !int.TryParse(parts[0], out var iterations)) return false;
-        var salt = Convert.FromBase64String(parts[1]);
-        var expected = Convert.FromBase64String(parts[2]);
-        var actual = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, expected.Length);
-        return CryptographicOperations.FixedTimeEquals(actual, expected);
-    }
 }
 
 public sealed record LoginRequest(string Email, string Password);
-public sealed record LoginResponse(string Token, string Email, string Role);
-public sealed record GameWriteRequest(string Title, string? Story, DateOnly? ReleaseDate, decimal UnitPrice, int? AgeRatingId, int[] GenreIds, int[] PlatformIds, bool IsActive = true);
+public sealed record LoginResponse(string Token, string Email, string Role, DateTime ExpiresAt);
+public sealed record GameWriteRequest(string Title, string? Story, DateOnly? ReleaseDate, decimal UnitPrice, int? AgeRatingId, int[]? GenreIds, int[]? PlatformIds, bool IsActive = true);
 public sealed record CustomerWriteRequest(string FirstName, string LastName, string? Phone, string? Email);
 public sealed record SaleItemRequest(int GameId, int Quantity);
 public sealed record SaleCreateRequest(int CustomerId, int? EmployeeId, SaleItemRequest[] Items);

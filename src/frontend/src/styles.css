@@ -232,6 +232,15 @@ th {
   margin: 10px 0;
 }
 
+.login-notice {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(96, 216, 255, .32);
+  background: rgba(22, 141, 255, .12);
+  color: #bfeaff;
+  font-size: 13px;
+}
+
 .dashboard {
   display: grid;
   gap: 18px;
@@ -462,15 +471,8 @@ th {
     radial-gradient(circle at 50% 50%, rgba(25, 76, 180, .16), transparent 56%),
     linear-gradient(180deg, #061022 0%, #040813 100%);
   isolation: isolate;
-}
-
-.login-hero {
   display: grid;
   place-items: center;
-}
-
-.login-hero::marker {
-  display: none;
 }
 
 .login-hero > .login-hero-shade::before {
@@ -1143,6 +1145,7 @@ td.actions-column {
 .drawer {
   width: min(570px, 96vw);
   height: 100vh;
+  height: 100dvh;
   overflow: auto;
   padding: 0;
   background: linear-gradient(180deg,#0a1429,#070d1b);
@@ -1435,4 +1438,8 @@ td.actions-column {
   .skeleton-panel {
     grid-column: span 1;
   }
+}
+
+.drawer:focus {
+  outline: none;
 }

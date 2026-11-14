@@ -2,7 +2,8 @@ USE GameCoreDB;
 GO
 
 -- Modern seed data based on the legacy project.
--- Personal identifiers from the original academic submission are intentionally not reused.
+-- Every person below is fictional. Names, phones and emails from the original
+-- academic submission (docs/original/TAREA-FINAL.sql) are intentionally not reused.
 
 INSERT INTO dbo.Companies (Name, Phone, Email)
 VALUES (N'GameCore Demo Studios', '809-555-0100', 'contact@gamecore.local');
@@ -15,10 +16,10 @@ VALUES (N'Programador'), (N'Diseñador Gráfico'), (N'Recursos Humanos'), (N'Rel
 
 INSERT INTO dbo.Employees (BranchId, JobPositionId, FirstName, LastName, Phone, Email)
 VALUES
-(1, 1, N'Jairo', N'Matías', '809-555-0101', 'jairo.demo@gamecore.local'),
-(1, 2, N'Ismael', N'Paredes', '809-555-0102', 'ismael.demo@gamecore.local'),
-(1, 3, N'Luis', N'Núñez', '809-555-0103', 'luis.demo@gamecore.local'),
-(1, 4, N'Francis', N'Rosario', '809-555-0104', 'francis.demo@gamecore.local');
+(1, 1, N'Valeria', N'Peña', '809-555-0101', 'valeria.demo@gamecore.local'),
+(1, 2, N'Andrés', N'Ibáñez', '809-555-0102', 'andres.demo@gamecore.local'),
+(1, 3, N'Sofía', N'Ramírez', '809-555-0103', 'sofia.demo@gamecore.local'),
+(1, 4, N'Tomás', N'Herrera', '809-555-0104', 'tomas.demo@gamecore.local');
 
 INSERT INTO dbo.Customers (FirstName, LastName, Phone, Email)
 VALUES
