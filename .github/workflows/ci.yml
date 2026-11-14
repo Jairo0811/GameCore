@@ -13,10 +13,10 @@ concurrency:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
       - name: PowerShell scripts parse
@@ -44,13 +44,13 @@ jobs:
           fi
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: src/frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
@@ -64,13 +64,13 @@ jobs:
     # Builds and starts the real docker compose stack from scratch (SQL Server + db-init + API + frontend),
     # then runs the PowerShell smoke test and the SQL Server integration tests against it.
     needs: [backend, frontend]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       GAMECORE_TEST_SQLSERVER: Server=localhost,1433;Database=GameCoreDB;User Id=sa;Password=GameCore_Local_2026!;TrustServerCertificate=True
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '10.0.x'
       - name: Validate compose file
