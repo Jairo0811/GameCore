@@ -430,7 +430,7 @@ Desde la raíz del repositorio (bootstrap oficial UTF-8):
 - Si **ya existe**, no la modifica: solo la valida.
 - `-Reset` la elimina y la recrea (**destructivo**, pide confirmación).
 
-> Si tienes una `GameCoreDB` creada con una versión anterior del repositorio, recréala con `.\scripts\setup-db.ps1 -Reset`: la validación exige los índices únicos filtrados de email y los usuarios Manager/Viewer.
+> Si tienes una `GameCoreDB` creada con una versión anterior del repositorio, actualízala sin perder datos con `.\scripts\setup-db.ps1 -Upgrade` (`database/upgrade-v1.sql`: índices únicos filtrados de email, usuarios Manager/Viewer y nombres ficticios en los empleados demo). La alternativa es recrearla con `-Reset`.
 
 ### 2. Backend
 

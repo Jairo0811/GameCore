@@ -1,12 +1,16 @@
 /*
- GameCoreDB bootstrap
- Run this file from SQLCMD mode in SQL Server Management Studio
- or with sqlcmd from the repository root:
+ GameCoreDB bootstrap (creates the database; it fails if GameCoreDB already exists).
 
- sqlcmd -S <server> -E -i database/setup.sql
+ Recommended (Windows, from the repository root):
+   .\scripts\setup-db.ps1                 creates GameCoreDB if missing, otherwise only validates it
+   .\scripts\setup-db.ps1 -Reset          drops and recreates it (asks for confirmation)
 
- For SQL authentication:
- sqlcmd -S <server> -U <user> -P <password> -i database/setup.sql
+ Raw sqlcmd, from the repository root (-f 65001 = UTF-8, -C = trust the local certificate):
+   sqlcmd -S <server> -E -C -f 65001 -i database/setup.sql
+   sqlcmd -S <server> -U <user> -P <password> -C -f 65001 -i database/setup.sql
+
+ SSMS: enable Query > SQLCMD Mode and open the file from the repository root.
+ Linux/Docker: the ':r' includes below use Windows paths; scripts/docker/init-db.sh normalises them.
 */
 
 :on error exit

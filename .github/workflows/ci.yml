@@ -96,6 +96,20 @@ jobs:
         run: dotnet test src/backend/GameCore.sln -c Release --filter "FullyQualifiedName~GameCore.Tests.SqlServer"
       - name: Restart keeps existing database (db-init is non-destructive)
         run: docker compose run --rm db-init | tee db-init-rerun.log && grep -q "Existing GameCoreDB is valid" db-init-rerun.log
+      - name: Upgrade path (pre-v1.0.0 database -> upgrade-v1.sql -> valid)
+        run: |
+          docker compose run --rm -v "$PWD/.github/ci:/ci:ro" --entrypoint /bin/bash db-init -c '
+            set -euo pipefail
+            S=/opt/mssql-tools18/bin/sqlcmd; [ -x "$S" ] || S=/opt/mssql-tools/bin/sqlcmd
+            run() { "$S" -S sqlserver -U sa -P "$MSSQL_SA_PASSWORD" -C -b -f 65001 -i "$1"; }
+            cd /gamecore
+            run /ci/simulate-pre-v1.sql
+            if run database/validate.sql; then echo "validate.sql should reject the pre-v1 schema"; exit 1; fi
+            run database/upgrade-v1.sql
+            run database/upgrade-v1.sql   # idempotent
+            run database/validate.sql
+            run database/advanced/validate.sql
+            echo "Upgrade path OK"'
       - name: Compose logs
         if: failure()
         run: docker compose logs --no-color

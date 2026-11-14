@@ -5,6 +5,8 @@
 .DESCRIPTION
   - GameCoreDB missing  -> runs database/setup.sql (schema, seed, AppUsers, advanced SQL, validations).
   - GameCoreDB present  -> does NOT modify it; runs database/validate.sql and database/advanced/validate.sql.
+  - -Upgrade            -> non-destructive: applies database/upgrade-v1.sql to a GameCoreDB created
+                           before v1.0.0 (filtered email indexes, Manager/Viewer users), then validates.
   - -Reset              -> DESTRUCTIVE: drops GameCoreDB (database/reset.sql) and rebuilds it.
                            Asks for confirmation unless -Force is also given.
 
@@ -12,6 +14,7 @@
   .\scripts\setup-db.ps1
   .\scripts\setup-db.ps1 -SqlExpress
   .\scripts\setup-db.ps1 -Server localhost,1433 -User sa -Password 'GameCore_Local_2026!'
+  .\scripts\setup-db.ps1 -Upgrade          # upgrades an older GameCoreDB in place, keeping its data
   .\scripts\setup-db.ps1 -Reset            # drops and recreates GameCoreDB (asks first)
 #>
 param(
@@ -19,6 +22,7 @@ param(
     [switch]$SqlExpress,
     [string]$User,
     [string]$Password,
+    [switch]$Upgrade,
     [switch]$Reset,
     [switch]$Force
 )
@@ -59,9 +63,19 @@ try {
     }
 
     if ($exists) {
-        Write-Host "GameCoreDB already exists on $Server. Validating without changes..." -ForegroundColor Cyan
-        Invoke-SqlFile "database\validate.sql"
-        Invoke-SqlFile "database\advanced\validate.sql"
+        if ($Upgrade) {
+            Write-Host "Upgrading the existing GameCoreDB on $Server (no data is deleted)..." -ForegroundColor Cyan
+            Invoke-SqlFile "database\upgrade-v1.sql"
+        }
+        Write-Host "GameCoreDB already exists on $Server. Validating..." -ForegroundColor Cyan
+        try {
+            Invoke-SqlFile "database\validate.sql"
+            Invoke-SqlFile "database\advanced\validate.sql"
+        }
+        catch {
+            Write-Host "Validation failed. If this GameCoreDB was created before v1.0.0, run: .\scripts\setup-db.ps1 -Upgrade" -ForegroundColor Yellow
+            throw
+        }
         Write-Host "GameCoreDB is valid." -ForegroundColor Green
         Write-Host "(To rebuild it from scratch, which deletes its data, run: .\scripts\setup-db.ps1 -Reset)" -ForegroundColor DarkGray
     }

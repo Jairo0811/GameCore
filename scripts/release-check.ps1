@@ -16,6 +16,7 @@
 .EXAMPLE
   .\scripts\release-check.ps1
   .\scripts\release-check.ps1 -SqlExpress
+  .\scripts\release-check.ps1 -UpgradeDatabase                         # GameCoreDB from before v1.0.0, data kept
   .\scripts\release-check.ps1 -ResetDatabase -IncludeSqlServerTests     # full check on a fresh database (asks first)
   .\scripts\release-check.ps1 -Server localhost,1433 -SqlUser sa -SqlPassword 'GameCore_Local_2026!'   # docker SQL Server
 #>
@@ -25,6 +26,7 @@ param(
     [switch]$SqlExpress,
     [string]$SqlUser,
     [string]$SqlPassword,
+    [switch]$UpgradeDatabase,
     [switch]$ResetDatabase,
     [switch]$Force,
     [switch]$SkipDatabase,
@@ -71,6 +73,7 @@ try {
         Step "Database: install or validate GameCoreDB on $Server"
         $dbArgs = @{ Server = $Server }
         if ($SqlUser) { $dbArgs.User = $SqlUser; $dbArgs.Password = $SqlPassword }
+        if ($UpgradeDatabase) { $dbArgs.Upgrade = $true }
         if ($ResetDatabase) { $dbArgs.Reset = $true }
         if ($Force) { $dbArgs.Force = $true }
         & "$PSScriptRoot\setup-db.ps1" @dbArgs
