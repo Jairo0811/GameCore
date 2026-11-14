@@ -411,7 +411,7 @@ GameCore
 | 10 | Dashboard & Reports | ✅ |
 | 11 | Security & Validation | ✅ |
 | 12 | Portfolio Hardening | ✅ |
-| 13 | Release 1.0 | ⏳ verificación final |
+| 13 | Release 1.0 | ✅ |
 
 ---
 
@@ -540,9 +540,9 @@ La aplicación moderna utiliza **datos de demostración ficticios**: los nombres
 
 ## 📌 Estado
 
-**v1.0.0: candidata a congelación.**
+**v1.0.0: lista para congelar.**
 
-La etiqueta definitiva `v1.0.0` se crea solo cuando el checklist de `docs/RELEASE.md` está completo, incluyendo el job `full-stack` de CI (Docker desde cero + smoke test + integración con SQL Server) y `scripts/release-check.ps1` en local.
+El checklist de `docs/RELEASE.md` está verificado en CI. Esto incluye el stack Docker desde cero, `setup-db.ps1`, `release-check.ps1`, el smoke test y la integración con SQL Server 2022. A partir de la etiqueta `v1.0.0` solo se aceptan correcciones críticas o una versión futura planificada.
 
 ---
 

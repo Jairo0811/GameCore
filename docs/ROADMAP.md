@@ -1,6 +1,6 @@
 # GameCore Restoration Roadmap
 
-Status legend: ✅ done · ⏳ in progress
+Status legend: ✅ done
 
 ## Phase 0 — Legacy Preservation ✅
 Preserve the original academic material and document the project history.
@@ -51,8 +51,9 @@ reproducible docker compose stack (SQL Server healthcheck, database init, API, f
 GitHub Actions running builds, tests, NuGet/npm audits and a full-stack container smoke test;
 setup-db / smoke-test / release-check scripts. Screenshots are not part of v1.
 
-## Phase 13 — Release 1.0 ⏳
+## Phase 13 — Release 1.0 ✅
 Finalize documentation and publish the restored project as a completed portfolio piece.
 
-Pending: green CI (including the `full-stack` job) and a local `scripts/release-check.ps1` run on the
-release branch, then the `v1.0.0` tag (see docs/RELEASE.md).
+Delivered: release checklist verified in CI on the release branch (Docker stack from scratch,
+setup-db.ps1, release-check.ps1, smoke test, SQL Server integration tests). The `v1.0.0` tag is
+created by the maintainer on the verified commit (see docs/RELEASE.md); after that the project is frozen.

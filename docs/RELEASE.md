@@ -12,7 +12,10 @@ Runs on pushes to `main` and `release/**` and on pull requests.
 | `frontend` | `npm ci`; production build; `npm test`; `npm audit --audit-level=high` |
 | `full-stack` | `docker compose config`; `docker compose up -d --build` **from scratch**; API `/health` (includes GameCoreDB); frontend served; `scripts/smoke-test.ps1`; SQL Server integration tests; re-running `db-init` keeps the existing database |
 
-All three jobs must be green on the commit to be tagged.
+All three jobs must be green on the commit to be tagged. Besides the checks above, `full-stack` also runs
+`setup-db.ps1 -Reset` (drop + full create while the API is connected), `setup-db.ps1` (validate only),
+the complete `release-check.ps1 -IncludeSqlServerTests` against the Docker SQL Server, and the upgrade path
+of `database/upgrade-v1.sql` on a simulated pre-v1.0.0 database.
 
 ## 2. Local verification (Windows + SQL Server)
 
