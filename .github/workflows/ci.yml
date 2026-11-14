@@ -57,7 +57,7 @@ jobs:
           cache-dependency-path: src/frontend/package-lock.json
       - run: npm ci
       - run: npm run build
-      - run: npm test -- --run
+      - run: npm test
       - run: npm audit --audit-level=high
 
   full-stack:
@@ -94,6 +94,28 @@ jobs:
         run: ./scripts/smoke-test.ps1 -ApiUrl http://localhost:8080
       - name: SQL Server integration tests
         run: dotnet test src/backend/GameCore.sln -c Release --filter "FullyQualifiedName~GameCore.Tests.SqlServer"
+      - name: Install sqlcmd (mssql-tools18) for the PowerShell scripts
+        run: |
+          sudo apt-get update -q
+          if ! apt-cache show mssql-tools18 >/dev/null 2>&1; then
+            curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+            curl -fsSL https://packages.microsoft.com/config/ubuntu/24.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+            sudo apt-get update -q
+          fi
+          sudo ACCEPT_EULA=Y apt-get install -y -q mssql-tools18
+          echo /opt/mssql-tools18/bin >> "$GITHUB_PATH"
+      - name: setup-db.ps1 -Reset (destructive path + full create from PowerShell)
+        shell: pwsh
+        run: |
+          ./scripts/setup-db.ps1 -Server 'localhost,1433' -User sa -Password 'GameCore_Local_2026!' -Reset -Force
+          ./scripts/setup-db.ps1 -Server 'localhost,1433' -User sa -Password 'GameCore_Local_2026!'   # existing DB: validate only
+      - name: Wait for API after database rebuild
+        run: |
+          for i in $(seq 1 30); do curl -fsS http://localhost:8080/health && exit 0; sleep 2; done
+          exit 1
+      - name: release-check.ps1 (DB, builds, tests, audits, API, smoke, SQL Server tests)
+        shell: pwsh
+        run: ./scripts/release-check.ps1 -ApiUrl http://localhost:8080 -Server 'localhost,1433' -SqlUser sa -SqlPassword 'GameCore_Local_2026!' -IncludeSqlServerTests
       - name: Restart keeps existing database (db-init is non-destructive)
         run: docker compose run --rm db-init | tee db-init-rerun.log && grep -q "Existing GameCoreDB is valid" db-init-rerun.log
       - name: Upgrade path (pre-v1.0.0 database -> upgrade-v1.sql -> valid)

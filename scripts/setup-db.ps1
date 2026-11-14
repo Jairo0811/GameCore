@@ -58,7 +58,7 @@ try {
                 $answer = Read-Host "Type GameCoreDB to confirm"
                 if ($answer -cne "GameCoreDB") { throw "Reset cancelled. GameCoreDB was not modified." }
             }
-            Invoke-SqlFile "database\reset.sql"
+            Invoke-SqlFile "database/reset.sql"
         }
         $exists = $false
     }
@@ -66,12 +66,12 @@ try {
     if ($exists) {
         if ($Upgrade) {
             Write-Host "Upgrading the existing GameCoreDB on $Server (no data is deleted)..." -ForegroundColor Cyan
-            Invoke-SqlFile "database\upgrade-v1.sql"
+            Invoke-SqlFile "database/upgrade-v1.sql"
         }
         Write-Host "GameCoreDB already exists on $Server. Validating..." -ForegroundColor Cyan
         try {
-            Invoke-SqlFile "database\validate.sql"
-            Invoke-SqlFile "database\advanced\validate.sql"
+            Invoke-SqlFile "database/validate.sql"
+            Invoke-SqlFile "database/advanced/validate.sql"
         }
         catch {
             Write-Host "Validation failed. If this GameCoreDB was created before v1.0.0, run: .\scripts\setup-db.ps1 -Upgrade" -ForegroundColor Yellow
@@ -82,7 +82,13 @@ try {
     }
     else {
         Write-Host "Creating GameCoreDB on $Server using UTF-8..." -ForegroundColor Cyan
-        Invoke-SqlFile "database\setup.sql"
+        $setupFile = "database/setup.sql"
+        if ($PSVersionTable.PSEdition -eq "Core" -and -not $IsWindows) {
+            # setup.sql uses Windows-style ':r .\database\...' includes; normalise them for Linux/macOS sqlcmd.
+            $setupFile = Join-Path ([System.IO.Path]::GetTempPath()) "gamecore-setup.sql"
+            (Get-Content "database/setup.sql" -Raw -Encoding utf8) -replace '\\', '/' | Set-Content $setupFile -Encoding utf8
+        }
+        Invoke-SqlFile $setupFile
         Write-Host "GameCoreDB is ready." -ForegroundColor Green
     }
 }

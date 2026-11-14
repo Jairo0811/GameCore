@@ -515,7 +515,7 @@ dotnet test src/backend/GameCore.sln -c Release
 dotnet list src/backend/GameCore.sln package --vulnerable --include-transitive
 
 cd src/frontend
-npm test -- --run
+npm test
 npm audit --audit-level=high
 ```
 

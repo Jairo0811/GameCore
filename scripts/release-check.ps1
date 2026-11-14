@@ -76,32 +76,32 @@ try {
         if ($UpgradeDatabase) { $dbArgs.Upgrade = $true }
         if ($ResetDatabase) { $dbArgs.Reset = $true }
         if ($Force) { $dbArgs.Force = $true }
-        & "$PSScriptRoot\setup-db.ps1" @dbArgs
+        & (Join-Path $PSScriptRoot "setup-db.ps1") @dbArgs
     }
 
     Step "Backend: restore and Release build"
-    Exec "dotnet restore" { dotnet restore src\backend\GameCore.sln }
-    Exec "dotnet build" { dotnet build src\backend\GameCore.sln -c Release --no-restore }
+    Exec "dotnet restore" { dotnet restore src/backend/GameCore.sln }
+    Exec "dotnet build" { dotnet build src/backend/GameCore.sln -c Release --no-restore }
 
     Step "Backend: tests"
-    Exec "dotnet test" { dotnet test src\backend\GameCore.sln -c Release --no-build }
+    Exec "dotnet test" { dotnet test src/backend/GameCore.sln -c Release --no-build }
 
     Step "Backend: NuGet vulnerability audit"
-    $nugetOutput = dotnet list src\backend\GameCore.sln package --vulnerable --include-transitive 2>&1
+    $nugetOutput = dotnet list src/backend/GameCore.sln package --vulnerable --include-transitive 2>&1
     $nugetOutput | Write-Host
     if ($LASTEXITCODE -ne 0) { throw "NuGet vulnerability check failed." }
     if (($nugetOutput -join [Environment]::NewLine) -match "has the following vulnerable packages") {
         throw "Vulnerable NuGet packages were detected."
     }
 
-    Push-Location src\frontend
+    Push-Location src/frontend
     try {
         Step "Frontend: npm ci"
         Exec "npm ci" { npm ci }
         Step "Frontend: production build"
         Exec "npm run build" { npm run build }
         Step "Frontend: tests"
-        Exec "npm test" { npm test -- --run }
+        Exec "npm test" { npm test }
         Step "Frontend: npm audit (high)"
         Exec "npm audit" { npm audit --audit-level=high }
     }
@@ -114,7 +114,7 @@ try {
         Write-Host "Using the API that is already running."
     }
     else {
-        $apiDir = Join-Path $root "src\backend\GameCore.WebAPI\bin\Release\net10.0"
+        $apiDir = Join-Path $root "src/backend/GameCore.WebAPI/bin/Release/net10.0"
         Write-Host "Starting the Release build from $apiDir ..."
         $env:ConnectionStrings__GameCoreDb = $connectionString
         $env:ASPNETCORE_ENVIRONMENT = "Development"
@@ -129,13 +129,13 @@ try {
     }
 
     Step "Smoke test (login, roles, dashboard, reports and every module)"
-    & "$PSScriptRoot\smoke-test.ps1" -ApiUrl $ApiUrl
+    & (Join-Path $PSScriptRoot "smoke-test.ps1") -ApiUrl $ApiUrl
 
     if ($IncludeSqlServerTests) {
         Step "SQL Server integration tests (write demo rows)"
         $env:GAMECORE_TEST_SQLSERVER = $connectionString
         try {
-            Exec "SQL Server integration tests" { dotnet test src\backend\GameCore.sln -c Release --no-build --filter "FullyQualifiedName~GameCore.Tests.SqlServer" }
+            Exec "SQL Server integration tests" { dotnet test src/backend/GameCore.sln -c Release --no-build --filter "FullyQualifiedName~GameCore.Tests.SqlServer" }
         }
         finally {
             Remove-Item Env:\GAMECORE_TEST_SQLSERVER -ErrorAction SilentlyContinue

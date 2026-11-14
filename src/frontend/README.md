@@ -19,7 +19,7 @@ npm run dev
 ## Test and build
 
 ```powershell
-npm test -- --run      # Vitest: session storage, API client, 401/403 handling
+npm test               # Vitest (one run; npm run test:watch for watch mode): session storage, API client, 401/403 handling
 npm run build          # type check + production bundle
 npm audit --audit-level=high
 ```

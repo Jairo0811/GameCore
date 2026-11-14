@@ -9,7 +9,7 @@ Runs on pushes to `main` and `release/**` and on pull requests.
 | Job | Verifies |
 |---|---|
 | `backend` | PowerShell scripts parse; `dotnet restore`; Release build; `dotnet test` (unit + API over SQLite); NuGet vulnerability audit (fails if any package is reported) |
-| `frontend` | `npm ci`; production build; `npm test -- --run`; `npm audit --audit-level=high` |
+| `frontend` | `npm ci`; production build; `npm test`; `npm audit --audit-level=high` |
 | `full-stack` | `docker compose config`; `docker compose up -d --build` **from scratch**; API `/health` (includes GameCoreDB); frontend served; `scripts/smoke-test.ps1`; SQL Server integration tests; re-running `db-init` keeps the existing database |
 
 All three jobs must be green on the commit to be tagged.
