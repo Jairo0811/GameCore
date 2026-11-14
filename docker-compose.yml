@@ -1,29 +1,88 @@
+# GameCore local full stack — FOR LOCAL DEVELOPMENT / DEMO ONLY.
+#
+#   docker compose up --build
+#
+# Starts SQL Server 2022, bootstraps GameCoreDB from database/setup.sql (only when it does not
+# exist yet), then the API (http://localhost:8080) and the frontend (http://localhost:5173).
+# Optional overrides live in .env (see .env.example). Never reuse these defaults outside your machine.
+name: gamecore
+
+x-sa-password: &sa-password ${MSSQL_SA_PASSWORD:-GameCore_Local_2026!}
+
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "GameCore_Local_2026!"
-    ports: ["1433:1433"]
-    volumes: [gamecore_sql:/var/opt/mssql]
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: *sa-password
+    ports:
+      - "${SQL_PORT:-1433}:1433"
+    volumes:
+      - gamecore_sql:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -b -Q "SELECT 1" -o /dev/null
+          || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -b -Q "SELECT 1" -o /dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    entrypoint: ["/bin/bash", "/gamecore/scripts/docker/init-db.sh"]
+    environment:
+      SQL_SERVER_HOST: sqlserver
+      MSSQL_SA_PASSWORD: *sa-password
+    volumes:
+      - ./database:/gamecore/database:ro
+      - ./scripts/docker:/gamecore/scripts/docker:ro
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: "no"
 
   api:
     build:
       context: .
       dockerfile: Dockerfile.backend
     environment:
+      # Development stack: the CHANGE-ME JWT key is accepted outside Production only.
+      # Setting ASPNETCORE_ENVIRONMENT=Production requires a real GAMECORE_JWT_KEY.
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__GameCoreDb: "Server=sqlserver;Database=GameCoreDB;User Id=sa;Password=GameCore_Local_2026!;TrustServerCertificate=True"
-      Jwt__Key: "CHANGE-ME-LOCAL-ONLY-GameCore-Docker-2026-Development-Key-64Chars"
-    ports: ["8080:8080"]
-    depends_on: [sqlserver]
+      ConnectionStrings__GameCoreDb: "Server=sqlserver;Database=GameCoreDB;User Id=sa;Password=${MSSQL_SA_PASSWORD:-GameCore_Local_2026!};TrustServerCertificate=True"
+      Jwt__Key: ${GAMECORE_JWT_KEY:-CHANGE-ME-LOCAL-ONLY-GameCore-Docker-2026-Development-Key-64Chars}
+      Cors__AllowedOrigins__0: http://localhost:${FRONTEND_PORT:-5173}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      # The ASP.NET runtime image has no curl; bash's /dev/tcp is enough for a local probe.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q ' 200 '"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    ports: ["5173:80"]
-    depends_on: [api]
+      args:
+        VITE_API_URL: http://localhost:${API_PORT:-8080}
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      api:
+        condition: service_started
 
 volumes:
   gamecore_sql:

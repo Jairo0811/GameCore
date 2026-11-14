@@ -1,8 +1,15 @@
 name: CI
 on:
   push:
-    branches: [main]
+    branches: [main, 'release/**']
   pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
@@ -12,9 +19,29 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet restore src/backend/GameCore.sln
-      - run: dotnet build src/backend/GameCore.sln -c Release --no-restore
-      - run: dotnet list src/backend/GameCore.sln package --vulnerable --include-transitive
+      - name: PowerShell scripts parse
+        shell: pwsh
+        run: |
+          $problems = @()
+          Get-ChildItem scripts -Filter *.ps1 -Recurse | ForEach-Object {
+            $parseErrors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$parseErrors)
+            if ($parseErrors) { $problems += $parseErrors | ForEach-Object { "$($_.Extent.File):$($_.Extent.StartLineNumber) $($_.Message)" } }
+          }
+          if ($problems) { $problems | ForEach-Object { Write-Host "::error::$_" }; exit 1 }
+      - name: Restore
+        run: dotnet restore src/backend/GameCore.sln
+      - name: Build (Release)
+        run: dotnet build src/backend/GameCore.sln -c Release --no-restore
+      - name: Test (unit + API over SQLite)
+        run: dotnet test src/backend/GameCore.sln -c Release --no-build
+      - name: NuGet vulnerability audit
+        run: |
+          dotnet list src/backend/GameCore.sln package --vulnerable --include-transitive 2>&1 | tee nuget-audit.txt
+          if grep -q "has the following vulnerable packages" nuget-audit.txt; then
+            echo "::error::Vulnerable NuGet packages detected."
+            exit 1
+          fi
 
   frontend:
     runs-on: ubuntu-latest
@@ -27,7 +54,51 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: src/frontend/package.json
+          cache-dependency-path: src/frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+      - run: npm test -- --run
       - run: npm audit --audit-level=high
+
+  full-stack:
+    # Builds and starts the real docker compose stack from scratch (SQL Server + db-init + API + frontend),
+    # then runs the PowerShell smoke test and the SQL Server integration tests against it.
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GAMECORE_TEST_SQLSERVER: Server=localhost,1433;Database=GameCoreDB;User Id=sa;Password=GameCore_Local_2026!;TrustServerCertificate=True
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate compose file
+        run: docker compose config --quiet
+      - name: Start stack from scratch
+        run: docker compose up -d --build
+      - name: Wait for API health (includes database)
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/health; then echo; exit 0; fi
+            if [ "$(docker inspect -f '{{.State.Status}} {{.State.ExitCode}}' gamecore-db-init-1 2>/dev/null)" = "exited 1" ]; then
+              echo "::error::db-init failed"; exit 1
+            fi
+            sleep 5
+          done
+          echo "::error::API did not become healthy"; exit 1
+      - name: Frontend responds
+        run: curl -fsS http://localhost:5173/ | grep -q '<div id="root">'
+      - name: Smoke test
+        shell: pwsh
+        run: ./scripts/smoke-test.ps1 -ApiUrl http://localhost:8080
+      - name: SQL Server integration tests
+        run: dotnet test src/backend/GameCore.sln -c Release --filter "FullyQualifiedName~GameCore.Tests.SqlServer"
+      - name: Restart keeps existing database (db-init is non-destructive)
+        run: docker compose run --rm db-init | tee db-init-rerun.log && grep -q "Existing GameCoreDB is valid" db-init-rerun.log
+      - name: Compose logs
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

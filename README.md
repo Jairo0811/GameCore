@@ -64,7 +64,7 @@ GameCore **no pretende ser un POS de tienda tradicional**. Aunque registra venta
 | 👨‍💼 **Empleados** | Personal, sucursales, cargos y estado |
 | 🌎 **Distribución** | Distribución de títulos por países y cantidades |
 | 📈 **Reportes** | Ventas mensuales, rendimiento por juego, valor por cliente y distribución geográfica |
-| 🔐 **Autenticación** | Acceso protegido mediante JWT |
+| 🔐 **Seguridad** | JWT + roles (Admin, Manager, Viewer) aplicados por políticas en cada endpoint |
 | 🧪 **SQL avanzado** | Views, stored procedures, funciones, transacciones y reporting |
 
 ---
@@ -80,7 +80,7 @@ GameCore **no pretende ser un POS de tienda tradicional**. Aunque registra venta
                ▼
 ┌─────────────────────────────┐
 │ ASP.NET Core Web API        │
-│ JWT · Endpoints REST        │
+│ JWT · RBAC · ProblemDetails │
 └──────────────┬──────────────┘
                │
                ▼
@@ -118,7 +118,9 @@ La restauración mantiene un enfoque **database-first**: los scripts de `databas
 - **ASP.NET Core Web API**
 - **C#**
 - **Entity Framework Core**
-- **JWT Bearer Authentication**
+- **JWT Bearer Authentication** + autorización por roles (policies)
+- **ProblemDetails** (RFC 7807) y manejo global de errores
+- health check con verificación real de SQL Server
 - separación por capas:
   - `GameCore.Domain`
   - `GameCore.Application`
@@ -140,12 +142,12 @@ La restauración mantiene un enfoque **database-first**: los scripts de `databas
 
 ### DevOps / calidad
 
-- **Docker**
-- **Docker Compose**
-- **GitHub Actions**
-- chequeo de vulnerabilidades NuGet
-- `npm audit`
-- smoke test en PowerShell
+- **xUnit** (API sobre SQLite + integración opcional con SQL Server real)
+- **Vitest** (sesión, cliente HTTP y manejo de 401/403)
+- **Docker** / **Docker Compose** (stack local completo con inicialización de la BD)
+- **GitHub Actions** (build, tests, auditorías y arranque full-stack en contenedores)
+- chequeo de vulnerabilidades NuGet y `npm audit`
+- smoke test y release check en PowerShell
 
 ---
 
@@ -192,41 +194,63 @@ Esto permite que un cliente tenga múltiples compras y que una venta contenga m�
 
 ## 🔌 API
 
-La API expone recursos protegidos bajo `/api`.
+La API expone recursos bajo `/api`. Todo excepto el login requiere un token JWT.
 
 ### Autenticación
 
 ```text
-POST /api/auth/login
+POST /api/auth/login        → { token, email, role, expiresAt }   (token válido 8 h)
 ```
 
-### Recursos principales
+### Roles
+
+| Rol | Lectura (GET) | Crear / editar / desactivar |
+|---|:---:|:---:|
+| **Viewer** | ✅ | ❌ (HTTP 403) |
+| **Manager** | ✅ | ✅ |
+| **Admin** | ✅ | ✅ |
+
+No existen endpoints exclusivos de Admin: la administración de usuarios queda fuera del alcance de v1.
+
+### Recursos
 
 ```text
-GET    /api/games
-POST   /api/games
-PUT    /api/games/{id}
-DELETE /api/games/{id}
+GET    /api/games                     Viewer+
+POST   /api/games                     Manager+   (juego + géneros + plataformas, atómico)
+PUT    /api/games/{id}                Manager+
+DELETE /api/games/{id}                Manager+   (desactivación lógica)
 
-GET    /api/customers
-POST   /api/customers
-PUT    /api/customers/{id}
+GET    /api/customers                 Viewer+
+POST   /api/customers                 Manager+
+PUT    /api/customers/{id}            Manager+
 
-GET    /api/sales
-POST   /api/sales
+GET    /api/sales                     Viewer+
+POST   /api/sales                     Manager+   (transaccional, precio histórico)
 
-GET    /api/employees
-POST   /api/employees
+GET    /api/employees                 Viewer+
+POST   /api/employees                 Manager+
+PUT    /api/employees/{id}            Manager+
 
-GET    /api/distributions
-POST   /api/distributions
+GET    /api/distributions             Viewer+
+POST   /api/distributions             Manager+   (alta; si Juego+País+Fecha ya existe actualiza unidades)
+PUT    /api/distributions/{id}        Manager+   (edita ese registro, incluso juego/país/fecha)
 
-GET    /api/catalogs
-GET    /api/dashboard
-GET    /api/reports
+GET    /api/catalogs                  Viewer+
+GET    /api/dashboard                 Viewer+
+GET    /api/reports                   Viewer+
+
+GET    /health                        anónimo    (503 si GameCoreDB no responde)
 ```
 
-La creación de ventas se ejecuta de forma transaccional para evitar operaciones parciales.
+### Errores y validación
+
+Los errores usan **ProblemDetails** (`application/problem+json`) sin trazas internas:
+
+- **400**: datos inválidos (obligatorios, longitudes, precios, cantidades, fechas, correos, IDs inexistentes, IDs repetidos);
+- **401**: sin token o token expirado/inválido; **403**: rol sin permiso;
+- **404**: recurso inexistente; **409**: duplicados (correo de cliente/empleado, título+fecha de juego, juego+país+fecha de distribución).
+
+Las validaciones se hacen **antes** de escribir en SQL Server; por ejemplo, una venta con el mismo `GameId` repetido devuelve 400 en lugar de chocar con `UQ_SaleDetails_Sale_Game`.
 
 ---
 
@@ -254,6 +278,7 @@ GameCore/
 │   │   ├── GameCore.Application/
 │   │   ├── GameCore.Infrastructure/
 │   │   ├── GameCore.WebAPI/
+│   │   ├── GameCore.Tests/
 │   │   └── GameCore.sln
 │   │
 │   └── frontend/
@@ -266,8 +291,12 @@ GameCore/
 │   └── RELEASE.md
 │
 ├── scripts/
+│   ├── docker/init-db.sh
+│   ├── release-check.ps1
+│   ├── setup-db.ps1
 │   └── smoke-test.ps1
 │
+├── .env.example
 ├── Dockerfile.backend
 ├── Dockerfile.frontend
 ├── docker-compose.yml
@@ -287,11 +316,11 @@ Los assets utilizados por la aplicación están incluidos en:
 
 ```text
 src/frontend/public/brand/
-├── gamecore-logo.png
-└── gamecore-icon.svg
+├── gamecore-logo.png          logo principal (sidebar)
+├── gamecore-icon.svg          isotipo y favicon
+├── gamecore-login-cover.png   portada del login
+└── gamecore-cover.png         portada de este README
 ```
-
-El isotipo también funciona como favicon de la aplicación.
 
 ---
 
@@ -382,7 +411,7 @@ GameCore
 | 10 | Dashboard & Reports | ✅ |
 | 11 | Security & Validation | ✅ |
 | 12 | Portfolio Hardening | ✅ |
-| 13 | Release 1.0 implementation | ✅ |
+| 13 | Release 1.0 | ⏳ verificación final |
 
 ---
 
@@ -390,21 +419,18 @@ GameCore
 
 ### 1. Base de datos
 
-Desde la raíz del repositorio:
+Desde la raíz del repositorio (bootstrap oficial UTF-8):
 
 ```powershell
-sqlcmd -S localhost -E -f 65001 -i database/setup.sql
+.\scripts\setup-db.ps1                 # SQL Server local (Windows auth)
+.\scripts\setup-db.ps1 -SqlExpress     # SQL Server Express
 ```
 
-El script instala:
+- Si `GameCoreDB` **no existe**, ejecuta `database/setup.sql`: esquema, seed, usuarios demo, views, funciones, procedures y validaciones.
+- Si **ya existe**, no la modifica: solo la valida.
+- `-Reset` la elimina y la recrea (**destructivo**, pide confirmación).
 
-- esquema;
-- seed de demostración;
-- seguridad;
-- views;
-- funciones;
-- stored procedures;
-- validaciones.
+> Si tienes una `GameCoreDB` creada con una versión anterior del repositorio, recréala con `.\scripts\setup-db.ps1 -Reset`: la validación exige los índices únicos filtrados de email y los usuarios Manager/Viewer.
 
 ### 2. Backend
 
@@ -414,74 +440,93 @@ dotnet build src/backend/GameCore.sln -c Release
 dotnet run --project src/backend/GameCore.WebAPI/GameCore.WebAPI.csproj
 ```
 
-API local predeterminada:
+API local predeterminada: `http://localhost:5152`
 
-```text
-http://localhost:5152
-```
+Configuración relevante (appsettings o variables de entorno):
+
+| Clave | Uso |
+|---|---|
+| `ConnectionStrings:GameCoreDb` | conexión a SQL Server |
+| `Jwt:Key` | clave HMAC (≥ 32 bytes). En `Production` no puede empezar por `CHANGE-ME` |
+| `Cors:AllowedOrigins` | orígenes del frontend (por defecto `http://localhost:5173`; `*` no está permitido) |
 
 ### 3. Frontend
 
 ```powershell
 cd src/frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Frontend local:
-
-```text
-http://localhost:5173
-```
+Frontend local: `http://localhost:5173`
 
 ---
 
-## 🔑 Cuenta de demostración
+## 🔑 Cuentas de demostración
 
-```text
-Email:    admin@gamecore.local
-Password: GameCore123!
-```
+Contraseña de las tres cuentas: `GameCore123!`
 
-> Las credenciales demo y la clave JWT incluida en configuración son exclusivamente para desarrollo local. Deben cambiarse antes de cualquier despliegue real.
+| Correo | Rol |
+|---|---|
+| `admin@gamecore.local` | Admin |
+| `manager@gamecore.local` | Manager |
+| `viewer@gamecore.local` | Viewer (solo lectura) |
+
+> En `npm run dev` el login aparece precargado con la cuenta Admin. En un build de producción (`npm run build`, Docker) los campos aparecen vacíos.
+> Las cuentas demo y la clave JWT del repositorio son exclusivamente para desarrollo local. Deben cambiarse antes de cualquier despliegue real.
 
 ---
 
-## 🐳 Docker
-
-El repositorio incluye configuración para backend, frontend y SQL Server:
+## 🐳 Docker (solo desarrollo local)
 
 ```powershell
 docker compose up --build
 ```
 
+El stack levanta, en orden:
+
+1. **sqlserver**: SQL Server 2022 con healthcheck real (`SELECT 1`);
+2. **db-init**: ejecuta `database/setup.sql` si `GameCoreDB` no existe (esquema, seed, AppUsers, SQL avanzado y validaciones). Si ya existe, solo la valida y **nunca la borra**;
+3. **api** (`http://localhost:8080`): arranca cuando `db-init` termina bien, con healthcheck sobre `/health`;
+4. **frontend** (`http://localhost:5173`): build de producción servido por nginx.
+
+Los valores por defecto (contraseña `sa`, clave JWT, puertos) se pueden cambiar con un `.env` basado en `.env.example`. El stack usa `ASPNETCORE_ENVIRONMENT=Development`. Si pasas a `Production`, debes definir una `GAMECORE_JWT_KEY` real.
+
+Para empezar de cero: `docker compose down -v`.
+
+> La pipeline `full-stack` de GitHub Actions construye y arranca este stack desde cero en cada push y ejecuta contra él el smoke test y los tests de integración con SQL Server.
+
 ---
 
 ## 🧪 Validación
 
-Antes de etiquetar la versión final se deben ejecutar:
+Un solo comando valida BD, backend, tests, auditorías, frontend, API y smoke test:
 
 ```powershell
-dotnet build src/backend/GameCore.sln -c Release
-dotnet list src/backend/GameCore.sln package --vulnerable --include-transitive
+.\scripts\release-check.ps1
 ```
 
-y en el frontend:
+Opciones útiles: `-SqlExpress`, `-Server`/`-SqlUser`/`-SqlPassword` (p. ej., para el SQL Server de Docker), `-ResetDatabase` (destructivo, pide confirmación) e `-IncludeSqlServerTests` (escribe datos demo). Si la API no está corriendo, el script la arranca y la detiene al terminar.
+
+Comandos individuales:
 
 ```powershell
+dotnet test src/backend/GameCore.sln -c Release
+dotnet list src/backend/GameCore.sln package --vulnerable --include-transitive
+
 cd src/frontend
-npm install
-npm run build
+npm test -- --run
 npm audit --audit-level=high
 ```
 
-También se incluye:
+Tests de integración contra SQL Server real (crean registros, úsalos solo con una BD desechable):
 
-```text
-scripts/smoke-test.ps1
+```powershell
+$env:GAMECORE_TEST_SQLSERVER = "Server=localhost;Database=GameCoreDB;Trusted_Connection=True;TrustServerCertificate=True"
+dotnet test src/backend/GameCore.sln -c Release --filter "FullyQualifiedName~GameCore.Tests.SqlServer"
 ```
 
-La lista completa está documentada en `docs/RELEASE.md`.
+El proceso completo de release está en `docs/RELEASE.md`.
 
 ---
 
@@ -489,23 +534,15 @@ La lista completa está documentada en `docs/RELEASE.md`.
 
 Los datos personales presentes en el artefacto académico original se conservan únicamente como parte del contexto histórico del proyecto.
 
-La aplicación moderna utiliza **datos de demostración anonimizados** y no reutiliza identificadores personales reales como seed operativo.
+La aplicación moderna utiliza **datos de demostración ficticios**: los nombres, teléfonos y correos del seed (`database/seed.sql`) son inventados y no reutilizan identificadores personales del artefacto original, que permanece sin cambios en `docs/original/`.
 
 ---
 
 ## 📌 Estado
 
-**Implementación funcional completada.**
+**v1.0.0: candidata a congelación.**
 
-La etiqueta definitiva `v1.0.0` se reserva hasta terminar la validación runtime local completa de:
-
-- SQL Server;
-- backend .NET;
-- frontend React;
-- autenticación;
-- módulos funcionales;
-- smoke test;
-- auditorías de dependencias.
+La etiqueta definitiva `v1.0.0` se crea solo cuando el checklist de `docs/RELEASE.md` está completo, incluyendo el job `full-stack` de CI (Docker desde cero + smoke test + integración con SQL Server) y `scripts/release-check.ps1` en local.
 
 ---
 

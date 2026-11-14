@@ -6,7 +6,8 @@ This folder contains the SQL Server implementation of the GameCore database.
 
 - `schema.sql` — creates `GameCoreDB`, tables, constraints, and indexes.
 - `seed.sql` — inserts safe demo data inspired by the original SOF-006 project.
-- `validate.sql` — validates core tables, seed data, and constraints.
+- `security.sql` — `AppUsers` table and local demo accounts (Admin, Manager, Viewer).
+- `validate.sql` — validates core tables, seed data, Unicode text, demo roles, constraints and the filtered unique email indexes (it inserts test rows inside transactions that are always rolled back).
 - `reset.sql` — development-only script that drops `GameCoreDB`.
 - `setup.sql` — SQLCMD bootstrap that installs the full database.
 - `advanced/views.sql` — reporting and catalog views.
@@ -22,33 +23,32 @@ This folder contains the SQL Server implementation of the GameCore database.
 
 ## First setup
 
-From the repository root:
+From the repository root (recommended):
 
 ```powershell
-sqlcmd -S localhost -E -f 65001 -i database/setup.sql
+.\scripts\setup-db.ps1              # creates GameCoreDB if missing, otherwise only validates it
+.\scripts\setup-db.ps1 -SqlExpress
 ```
 
-For SQL Server Express:
+Equivalent raw command (`-C` trusts the local certificate; `-f 65001` reads the scripts as UTF-8):
 
 ```powershell
-sqlcmd -S .\SQLEXPRESS -E -i database/setup.sql
+sqlcmd -S localhost -E -C -f 65001 -i database/setup.sql
 ```
 
 ## Rebuild during development
 
 ```powershell
-sqlcmd -S localhost -E -f 65001 -i database/reset.sql
-sqlcmd -S localhost -E -f 65001 -i database/setup.sql
-```
-
-For SQL Server Express:
-
-```powershell
-sqlcmd -S .\SQLEXPRESS -E -i database/reset.sql
-sqlcmd -S .\SQLEXPRESS -E -i database/setup.sql
+.\scripts\setup-db.ps1 -Reset       # asks for confirmation, then drops and recreates GameCoreDB
 ```
 
 > `reset.sql` deletes the entire GameCoreDB database. It is intended only for local development.
+
+## Optional emails
+
+`Customers.Email` and `Employees.Email` are optional. Uniqueness is enforced by filtered unique indexes
+(`UX_Customers_Email`, `UX_Employees_Email` … `WHERE Email IS NOT NULL`), so any number of rows may have no
+email while non-NULL values stay unique. `AppUsers.Email` is mandatory and keeps a normal UNIQUE constraint.
 
 ### SQLCMD compatibility
 
@@ -111,7 +111,7 @@ The database now demonstrates:
 
 ## Recommended UTF-8 bootstrap
 
-To avoid mojibake in names such as `Pokémon`, `Matías`, `Núñez`, `México`, and `República Dominicana`, run SQLCMD explicitly as UTF-8:
+To avoid mojibake in names such as `Pokémon`, `Peña`, `Ibáñez`, `México`, and `República Dominicana`, run SQLCMD explicitly as UTF-8 (`validate.sql` fails if the seed was decoded incorrectly):
 
 ```powershell
 .\scripts\setup-db.ps1

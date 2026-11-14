@@ -1,0 +1,15 @@
+# Keep host build artefacts (possibly Windows binaries) out of the Linux images.
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/*.tsbuildinfo
+**/TestResults
+.git
+.github
+.vs
+.vscode
+.idea
+.env
+.env.*
+docs

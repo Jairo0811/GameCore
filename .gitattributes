@@ -1,0 +1,11 @@
+* text=auto
+
+# Executed inside Linux containers: must keep LF even on Windows checkouts.
+*.sh text eol=lf
+docker-compose.yml text eol=lf
+Dockerfile.* text eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.ico binary
