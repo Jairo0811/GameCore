@@ -32,6 +32,12 @@ function Assert-Status([int]$Expected, [int]$Actual, [string]$What) {
     if ($Actual -ne $Expected) { throw "$What returned HTTP $Actual (expected $Expected)." }
 }
 
+# Windows PowerShell 5.1 enumerates JSON arrays from Invoke-RestMethod; PowerShell 7 returns them as a
+# single object. Piping through ForEach-Object yields a flat array in both.
+function Get-List([string]$Uri, [hashtable]$Headers) {
+    return @(Invoke-RestMethod -Uri $Uri -Headers $Headers | ForEach-Object { $_ })
+}
+
 function Login([string]$Email) {
     $body = @{ email = $Email; password = $Password } | ConvertTo-Json
     $session = Invoke-RestMethod -Method Post -Uri "$ApiUrl/api/auth/login" -ContentType "application/json" -Body $body
@@ -62,14 +68,14 @@ $reports = Invoke-RestMethod -Uri "$ApiUrl/api/reports" -Headers $admin
 if ($null -eq $reports.monthlySales -or $null -eq $reports.topGames) { throw "Reports endpoint failed." }
 
 Step "Modules (games, customers, sales, employees, distributions, catalogs)"
-$games = @(Invoke-RestMethod -Uri "$ApiUrl/api/games" -Headers $admin)
-$customers = @(Invoke-RestMethod -Uri "$ApiUrl/api/customers" -Headers $admin)
+$games = Get-List "$ApiUrl/api/games" $admin
+$customers = Get-List "$ApiUrl/api/customers" $admin
 $null = Invoke-RestMethod -Uri "$ApiUrl/api/sales" -Headers $admin
 $null = Invoke-RestMethod -Uri "$ApiUrl/api/employees" -Headers $admin
 $null = Invoke-RestMethod -Uri "$ApiUrl/api/distributions" -Headers $admin
 $catalogs = Invoke-RestMethod -Uri "$ApiUrl/api/catalogs" -Headers $admin
 if ($games.Count -eq 0 -or $customers.Count -eq 0) { throw "Seed data (games/customers) is missing." }
-if (@($catalogs.countries).Count -eq 0) { throw "Catalogs endpoint returned no countries." }
+if (@($catalogs.countries | ForEach-Object { $_ }).Count -eq 0) { throw "Catalogs endpoint returned no countries." }
 
 Step "Roles (Viewer read-only, Manager can read)"
 Assert-Status 200 (Get-StatusCode { Invoke-RestMethod -Uri "$ApiUrl/api/games" -Headers $viewer }) "Viewer GET /api/games"
@@ -80,6 +86,7 @@ Assert-Status 403 (Get-StatusCode { Invoke-RestMethod -Method Delete -Uri "$ApiU
 
 Step "Validation before the database (duplicated GameId in a sale -> 400)"
 $gameId = $games[0].gameId
+if ($gameId -isnot [int] -and $gameId -isnot [long]) { throw "Unexpected games payload (gameId = '$gameId')." }
 $saleBody = @{ customerId = $customers[0].customerId; employeeId = $null; items = @(@{ gameId = $gameId; quantity = 1 }, @{ gameId = $gameId; quantity = 1 }) } | ConvertTo-Json -Depth 4
 Assert-Status 400 (Get-StatusCode { Invoke-RestMethod -Method Post -Uri "$ApiUrl/api/sales" -Headers $manager -ContentType "application/json" -Body $saleBody }) "Sale with duplicated GameId"
 

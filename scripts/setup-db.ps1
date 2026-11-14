@@ -36,10 +36,11 @@ if (-not (Get-Command sqlcmd -ErrorAction SilentlyContinue)) {
 }
 
 # -C trusts the local self-signed certificate (required by ODBC Driver 18 / go-sqlcmd defaults).
+# -I enables QUOTED_IDENTIFIER, as SSMS and SqlClient do (needed for tables with filtered indexes).
 $auth = if ($User) { @("-U", $User, "-P", $Password) } else { @("-E") }
 
 function Invoke-SqlFile([string]$File) {
-    & sqlcmd -S $Server @auth -C -b -f 65001 -i $File
+    & sqlcmd -S $Server @auth -C -I -b -f 65001 -i $File
     if ($LASTEXITCODE -ne 0) { throw "sqlcmd failed while running $File." }
 }
 

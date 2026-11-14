@@ -3,7 +3,7 @@
  It does NOT drop the database or delete data. Safe to run more than once.
 
    .\scripts\setup-db.ps1 -Upgrade
-   or: sqlcmd -S <server> -E -C -f 65001 -i database/upgrade-v1.sql
+   or: sqlcmd -S <server> -E -C -I -f 65001 -i database/upgrade-v1.sql
 
  Changes:
    1. Customers/Employees.Email: UNIQUE constraint -> filtered unique index (several NULL emails allowed).

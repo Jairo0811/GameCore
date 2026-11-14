@@ -5,6 +5,17 @@ GO
 USE GameCoreDB;
 GO
 
+-- Required to write to tables with filtered indexes (the behavioural checks below insert and roll back).
+-- Declared here so the script also works when run on its own (sqlcmd defaults QUOTED_IDENTIFIER to OFF).
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_PADDING ON;
+SET ANSI_WARNINGS ON;
+SET CONCAT_NULL_YIELDS_NULL ON;
+SET ARITHABORT ON;
+SET NUMERIC_ROUNDABORT OFF;
+GO
+
 SET NOCOUNT ON;
 
 DECLARE @ExpectedTables int = 15;

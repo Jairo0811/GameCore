@@ -31,10 +31,10 @@ From the repository root (recommended):
 .\scripts\setup-db.ps1 -SqlExpress
 ```
 
-Equivalent raw command (`-C` trusts the local certificate; `-f 65001` reads the scripts as UTF-8):
+Equivalent raw command (`-C` trusts the local certificate; `-I` enables QUOTED_IDENTIFIER; `-f 65001` reads the scripts as UTF-8):
 
 ```powershell
-sqlcmd -S localhost -E -C -f 65001 -i database/setup.sql
+sqlcmd -S localhost -E -C -I -f 65001 -i database/setup.sql
 ```
 
 ## Rebuild during development

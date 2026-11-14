@@ -5,9 +5,9 @@
    .\scripts\setup-db.ps1                 creates GameCoreDB if missing, otherwise only validates it
    .\scripts\setup-db.ps1 -Reset          drops and recreates it (asks for confirmation)
 
- Raw sqlcmd, from the repository root (-f 65001 = UTF-8, -C = trust the local certificate):
-   sqlcmd -S <server> -E -C -f 65001 -i database/setup.sql
-   sqlcmd -S <server> -U <user> -P <password> -C -f 65001 -i database/setup.sql
+ Raw sqlcmd, from the repository root (-f 65001 = UTF-8, -C = trust the local certificate, -I = QUOTED_IDENTIFIER ON):
+   sqlcmd -S <server> -E -C -I -f 65001 -i database/setup.sql
+   sqlcmd -S <server> -U <user> -P <password> -C -I -f 65001 -i database/setup.sql
 
  SSMS: enable Query > SQLCMD Mode and open the file from the repository root.
  Linux/Docker: the ':r' includes below use Windows paths; scripts/docker/init-db.sh normalises them.

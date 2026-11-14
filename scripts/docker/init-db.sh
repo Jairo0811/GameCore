@@ -13,7 +13,7 @@ SERVER="${SQL_SERVER_HOST:-sqlserver}"
 : "${MSSQL_SA_PASSWORD:?MSSQL_SA_PASSWORD is required}"
 
 run_sql() {
-  "$SQLCMD" -S "$SERVER" -U sa -P "$MSSQL_SA_PASSWORD" -C -b -f 65001 "$@"
+  "$SQLCMD" -S "$SERVER" -U sa -P "$MSSQL_SA_PASSWORD" -C -I -b -f 65001 "$@"
 }
 
 echo "[db-init] Waiting for SQL Server at ${SERVER}..."
